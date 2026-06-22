@@ -1,0 +1,12 @@
+{
+  "name": "csdm-deep-linker-sandbox",
+  "version": "3.5.0",
+  "description": "CSDM Sandbox Phase 3.5 Model Quality Advisor",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

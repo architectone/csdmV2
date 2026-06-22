@@ -1,0 +1,354 @@
+{
+  "schemaVersion": "phase-3.5",
+  "seedModel": "Full Demo",
+  "nodes": [
+    {
+      "id": "cap-trading",
+      "label": "Trading",
+      "domain": "Design & Planning",
+      "type": "Business Capability",
+      "metadata": {
+        "description": "Trading sample Business Capability.",
+        "owner": "Example Owner",
+        "environment": "Production"
+      }
+    },
+    {
+      "id": "app-charles-river",
+      "label": "Charles River",
+      "domain": "Design & Planning",
+      "type": "Business Application",
+      "metadata": {
+        "description": "Charles River sample Business Application.",
+        "owner": "Example Owner",
+        "environment": "Production"
+      }
+    },
+    {
+      "id": "svc-equity-trading",
+      "label": "Equity Trading",
+      "domain": "Service Delivery",
+      "type": "Application Service",
+      "metadata": {
+        "description": "Equity Trading sample Application Service.",
+        "owner": "Example Owner",
+        "environment": "Production"
+      }
+    },
+    {
+      "id": "offering-equity-prod",
+      "label": "Equity Production",
+      "domain": "Service Consumption",
+      "type": "Business Service Offering",
+      "metadata": {
+        "description": "Equity Production sample Business Service Offering.",
+        "owner": "Example Owner",
+        "environment": "Production"
+      }
+    },
+    {
+      "id": "cluster-pgh-core",
+      "label": "pgh-core-k8s-cluster",
+      "domain": "Infrastructure / Compute",
+      "type": "Kubernetes Cluster",
+      "metadata": {
+        "description": "pgh-core-k8s-cluster sample Kubernetes Cluster.",
+        "owner": "Example Owner",
+        "environment": "Production"
+      }
+    },
+    {
+      "id": "node-pgh-01",
+      "label": "pgh-k8s-node-01",
+      "domain": "Infrastructure / Compute",
+      "type": "Compute Node",
+      "metadata": {
+        "description": "pgh-k8s-node-01 sample Compute Node.",
+        "owner": "Example Owner",
+        "environment": "Production"
+      }
+    },
+    {
+      "id": "ns-trading-prod",
+      "label": "trading-prod",
+      "domain": "Infrastructure / Runtime",
+      "type": "Namespace",
+      "metadata": {
+        "description": "trading-prod sample Namespace.",
+        "owner": "Example Owner",
+        "environment": "Production"
+      }
+    },
+    {
+      "id": "workload-order-router",
+      "label": "order-router",
+      "domain": "Infrastructure / Runtime",
+      "type": "Workload",
+      "metadata": {
+        "description": "order-router sample Workload.",
+        "owner": "Example Owner",
+        "environment": "Production"
+      }
+    },
+    {
+      "id": "pod-order-router-1",
+      "label": "order-router-pod-1",
+      "domain": "Infrastructure / Runtime",
+      "type": "Pod",
+      "metadata": {
+        "description": "order-router-pod-1 sample Pod.",
+        "owner": "Example Owner",
+        "environment": "Production"
+      }
+    },
+    {
+      "id": "container-order-router",
+      "label": "order-router-container",
+      "domain": "Infrastructure / Runtime",
+      "type": "Container",
+      "metadata": {
+        "description": "order-router-container sample Container.",
+        "owner": "Example Owner",
+        "environment": "Production"
+      }
+    },
+    {
+      "id": "image-order-router",
+      "label": "order-router:1.4.2",
+      "domain": "Infrastructure / Runtime",
+      "type": "Container Image",
+      "metadata": {
+        "description": "order-router:1.4.2 sample Container Image.",
+        "owner": "Example Owner",
+        "environment": "Production"
+      }
+    },
+    {
+      "id": "db-orders",
+      "label": "trading-orders-db",
+      "domain": "Infrastructure / Data",
+      "type": "Database Instance",
+      "metadata": {
+        "description": "trading-orders-db sample Database Instance.",
+        "owner": "Example Owner",
+        "environment": "Production"
+      }
+    },
+    {
+      "id": "volume-orders",
+      "label": "orders-data-volume",
+      "domain": "Infrastructure / Storage",
+      "type": "Storage Volume",
+      "metadata": {
+        "description": "orders-data-volume sample Storage Volume.",
+        "owner": "Example Owner",
+        "environment": "Production"
+      }
+    },
+    {
+      "id": "lb-trading",
+      "label": "equity-trading-lb",
+      "domain": "Infrastructure / Network",
+      "type": "Load Balancer",
+      "metadata": {
+        "description": "equity-trading-lb sample Load Balancer.",
+        "owner": "Example Owner",
+        "environment": "Production"
+      }
+    },
+    {
+      "id": "ingress-trading",
+      "label": "equity-trading-ingress",
+      "domain": "Infrastructure / Network",
+      "type": "Ingress",
+      "metadata": {
+        "description": "equity-trading-ingress sample Ingress.",
+        "owner": "Example Owner",
+        "environment": "Production"
+      }
+    },
+    {
+      "id": "cert-trading",
+      "label": "equity-trading-cert",
+      "domain": "Infrastructure / Security",
+      "type": "Certificate",
+      "metadata": {
+        "description": "equity-trading-cert sample Certificate.",
+        "owner": "Example Owner",
+        "environment": "Production"
+      }
+    },
+    {
+      "id": "kv-trading",
+      "label": "trading-key-vault",
+      "domain": "Infrastructure / Security",
+      "type": "Key Vault",
+      "metadata": {
+        "description": "trading-key-vault sample Key Vault.",
+        "owner": "Example Owner",
+        "environment": "Production"
+      }
+    },
+    {
+      "id": "secret-db",
+      "label": "orders-db-secret",
+      "domain": "Infrastructure / Security",
+      "type": "Secret",
+      "metadata": {
+        "description": "orders-db-secret sample Secret.",
+        "owner": "Example Owner",
+        "environment": "Production"
+      }
+    },
+    {
+      "id": "netseg-prod",
+      "label": "prod-app-network",
+      "domain": "Infrastructure / Network",
+      "type": "Network Segment",
+      "metadata": {
+        "description": "prod-app-network sample Network Segment.",
+        "owner": "Example Owner",
+        "environment": "Production"
+      }
+    },
+    {
+      "id": "subnet-trading",
+      "label": "trading-subnet-a",
+      "domain": "Infrastructure / Network",
+      "type": "Subnet",
+      "metadata": {
+        "description": "trading-subnet-a sample Subnet.",
+        "owner": "Example Owner",
+        "environment": "Production"
+      }
+    },
+    {
+      "id": "dns-trading",
+      "label": "equity-trading-dns",
+      "domain": "Infrastructure / Network",
+      "type": "DNS Record",
+      "metadata": {
+        "description": "equity-trading-dns sample DNS Record.",
+        "owner": "Example Owner",
+        "environment": "Production"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "app-charles-river",
+      "to": "cap-trading",
+      "label": "Provides"
+    },
+    {
+      "from": "svc-equity-trading",
+      "to": "app-charles-river",
+      "label": "Instantiates"
+    },
+    {
+      "from": "offering-equity-prod",
+      "to": "svc-equity-trading",
+      "label": "Depends on"
+    },
+    {
+      "from": "svc-equity-trading",
+      "to": "cluster-pgh-core",
+      "label": "Runs on"
+    },
+    {
+      "from": "cluster-pgh-core",
+      "to": "ns-trading-prod",
+      "label": "Contains"
+    },
+    {
+      "from": "cluster-pgh-core",
+      "to": "node-pgh-01",
+      "label": "Contains"
+    },
+    {
+      "from": "ns-trading-prod",
+      "to": "workload-order-router",
+      "label": "Contains"
+    },
+    {
+      "from": "workload-order-router",
+      "to": "pod-order-router-1",
+      "label": "Contains"
+    },
+    {
+      "from": "pod-order-router-1",
+      "to": "container-order-router",
+      "label": "Contains"
+    },
+    {
+      "from": "container-order-router",
+      "to": "image-order-router",
+      "label": "Uses"
+    },
+    {
+      "from": "workload-order-router",
+      "to": "node-pgh-01",
+      "label": "Runs on"
+    },
+    {
+      "from": "pod-order-router-1",
+      "to": "node-pgh-01",
+      "label": "Runs on"
+    },
+    {
+      "from": "workload-order-router",
+      "to": "db-orders",
+      "label": "Uses"
+    },
+    {
+      "from": "workload-order-router",
+      "to": "secret-db",
+      "label": "Uses"
+    },
+    {
+      "from": "db-orders",
+      "to": "volume-orders",
+      "label": "Uses"
+    },
+    {
+      "from": "lb-trading",
+      "to": "ingress-trading",
+      "label": "Routes to"
+    },
+    {
+      "from": "ingress-trading",
+      "to": "workload-order-router",
+      "label": "Routes to"
+    },
+    {
+      "from": "lb-trading",
+      "to": "cert-trading",
+      "label": "Uses"
+    },
+    {
+      "from": "kv-trading",
+      "to": "secret-db",
+      "label": "Contains"
+    },
+    {
+      "from": "kv-trading",
+      "to": "cert-trading",
+      "label": "Contains"
+    },
+    {
+      "from": "node-pgh-01",
+      "to": "netseg-prod",
+      "label": "Connects to"
+    },
+    {
+      "from": "netseg-prod",
+      "to": "subnet-trading",
+      "label": "Contains"
+    },
+    {
+      "from": "dns-trading",
+      "to": "lb-trading",
+      "label": "Points to"
+    }
+  ]
+}
