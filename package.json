@@ -1,7 +1,7 @@
 {
   "name": "csdm-deep-linker-sandbox",
-  "version": "3.5.0",
-  "description": "CSDM Sandbox Phase 3.5 Model Quality Advisor",
+  "version": "3.5.1",
+  "description": "CSDM Sandbox Phase 3.5.1 Guided CSDM Path dialog order cleanup",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
