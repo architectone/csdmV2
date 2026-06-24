@@ -1,7 +1,7 @@
 {
   "name": "csdm-deep-linker-sandbox",
-  "version": "3.7.0",
-  "description": "CSDM Sandbox Phase 3.7 relationship management UX",
+  "version": "3.5.2",
+  "description": "CSDM Sandbox Phase 3.5.2 Application Service infrastructure dependency builder",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"

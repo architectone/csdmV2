@@ -1,3 +1,3 @@
-# CSDM Deep Linker Sandbox — Phase 3.5.1
+# CSDM Deep Linker Sandbox — Phase 3.7
 
-Cleans up the Guided CSDM Path dialog so fields follow the CSDM flow: Business Capability → Business Application → Application Service → Business Service Offering → Infrastructure Target. Preserves Phase 3.5 behavior.
+Adds Relationship Management UX: right-click relationship menu, relationship details, change relationship type, reverse direction with validation, delete relationship, and duplicate relationship checks in Model Quality Advisor. Preserves smart routing, persisted positions, View Modes, Reset Layout, and prior behavior.
