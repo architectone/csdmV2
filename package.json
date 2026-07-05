@@ -4,7 +4,8 @@
   "description": "CSDM Sandbox Phase 3.7 relationship management UX",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node tests/run-tests.js"
   },
   "dependencies": {
     "express": "^4.19.2"
