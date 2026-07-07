@@ -1,6 +1,6 @@
 {
   "schemaVersion": "phase-3.7",
-  "seedModel": "Full Demo",
+  "seedModel": "Custom / Edited Model",
   "nodes": [
     {
       "id": "cap-trading",
@@ -87,8 +87,8 @@
         "owner": "Example Owner",
         "environment": "Production",
         "position": {
-          "x": -520,
-          "y": 450
+          "x": -607,
+          "y": 453
         }
       }
     },

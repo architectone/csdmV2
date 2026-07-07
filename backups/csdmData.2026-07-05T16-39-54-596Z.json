@@ -1,6 +1,6 @@
 {
-  "schemaVersion": "phase-3.5.2",
-  "seedModel": "Full Demo",
+  "schemaVersion": "phase-3.7",
+  "seedModel": "Custom / Edited Model",
   "nodes": [
     {
       "id": "cap-trading",
@@ -10,7 +10,11 @@
       "metadata": {
         "description": "Trading sample Business Capability.",
         "owner": "Example Owner",
-        "environment": "Production"
+        "environment": "Production",
+        "position": {
+          "x": 0,
+          "y": -300
+        }
       }
     },
     {
@@ -21,7 +25,11 @@
       "metadata": {
         "description": "Charles River sample Business Application.",
         "owner": "Example Owner",
-        "environment": "Production"
+        "environment": "Production",
+        "position": {
+          "x": 0,
+          "y": -150
+        }
       }
     },
     {
@@ -32,7 +40,11 @@
       "metadata": {
         "description": "Equity Trading sample Application Service.",
         "owner": "Example Owner",
-        "environment": "Production"
+        "environment": "Production",
+        "position": {
+          "x": 0,
+          "y": 0
+        }
       }
     },
     {
@@ -43,7 +55,11 @@
       "metadata": {
         "description": "Equity Production sample Business Service Offering.",
         "owner": "Example Owner",
-        "environment": "Production"
+        "environment": "Production",
+        "position": {
+          "x": 0,
+          "y": 150
+        }
       }
     },
     {
@@ -54,7 +70,11 @@
       "metadata": {
         "description": "pgh-core-k8s-cluster sample Kubernetes Cluster.",
         "owner": "Example Owner",
-        "environment": "Production"
+        "environment": "Production",
+        "position": {
+          "x": 0,
+          "y": 300
+        }
       }
     },
     {
@@ -65,7 +85,11 @@
       "metadata": {
         "description": "pgh-k8s-node-01 sample Compute Node.",
         "owner": "Example Owner",
-        "environment": "Production"
+        "environment": "Production",
+        "position": {
+          "x": -607,
+          "y": 453
+        }
       }
     },
     {
@@ -76,7 +100,11 @@
       "metadata": {
         "description": "trading-prod sample Namespace.",
         "owner": "Example Owner",
-        "environment": "Production"
+        "environment": "Production",
+        "position": {
+          "x": -260,
+          "y": 450
+        }
       }
     },
     {
@@ -87,7 +115,11 @@
       "metadata": {
         "description": "order-router sample Workload.",
         "owner": "Example Owner",
-        "environment": "Production"
+        "environment": "Production",
+        "position": {
+          "x": -260,
+          "y": 600
+        }
       }
     },
     {
@@ -98,7 +130,11 @@
       "metadata": {
         "description": "order-router-pod-1 sample Pod.",
         "owner": "Example Owner",
-        "environment": "Production"
+        "environment": "Production",
+        "position": {
+          "x": -520,
+          "y": 750
+        }
       }
     },
     {
@@ -109,7 +145,11 @@
       "metadata": {
         "description": "order-router-container sample Container.",
         "owner": "Example Owner",
-        "environment": "Production"
+        "environment": "Production",
+        "position": {
+          "x": -130,
+          "y": 900
+        }
       }
     },
     {
@@ -120,7 +160,11 @@
       "metadata": {
         "description": "order-router:1.4.2 sample Container Image.",
         "owner": "Example Owner",
-        "environment": "Production"
+        "environment": "Production",
+        "position": {
+          "x": 0,
+          "y": 1050
+        }
       }
     },
     {
@@ -131,7 +175,11 @@
       "metadata": {
         "description": "trading-orders-db sample Database Instance.",
         "owner": "Example Owner",
-        "environment": "Production"
+        "environment": "Production",
+        "position": {
+          "x": -260,
+          "y": 750
+        }
       }
     },
     {
@@ -142,7 +190,11 @@
       "metadata": {
         "description": "orders-data-volume sample Storage Volume.",
         "owner": "Example Owner",
-        "environment": "Production"
+        "environment": "Production",
+        "position": {
+          "x": 130,
+          "y": 900
+        }
       }
     },
     {
@@ -153,7 +205,11 @@
       "metadata": {
         "description": "equity-trading-lb sample Load Balancer.",
         "owner": "Example Owner",
-        "environment": "Production"
+        "environment": "Production",
+        "position": {
+          "x": 0,
+          "y": 450
+        }
       }
     },
     {
@@ -164,7 +220,11 @@
       "metadata": {
         "description": "equity-trading-ingress sample Ingress.",
         "owner": "Example Owner",
-        "environment": "Production"
+        "environment": "Production",
+        "position": {
+          "x": 260,
+          "y": 450
+        }
       }
     },
     {
@@ -175,7 +235,11 @@
       "metadata": {
         "description": "equity-trading-cert sample Certificate.",
         "owner": "Example Owner",
-        "environment": "Production"
+        "environment": "Production",
+        "position": {
+          "x": 0,
+          "y": 600
+        }
       }
     },
     {
@@ -186,7 +250,11 @@
       "metadata": {
         "description": "trading-key-vault sample Key Vault.",
         "owner": "Example Owner",
-        "environment": "Production"
+        "environment": "Production",
+        "position": {
+          "x": 0,
+          "y": 750
+        }
       }
     },
     {
@@ -197,7 +265,11 @@
       "metadata": {
         "description": "orders-db-secret sample Secret.",
         "owner": "Example Owner",
-        "environment": "Production"
+        "environment": "Production",
+        "position": {
+          "x": 260,
+          "y": 750
+        }
       }
     },
     {
@@ -208,7 +280,11 @@
       "metadata": {
         "description": "prod-app-network sample Network Segment.",
         "owner": "Example Owner",
-        "environment": "Production"
+        "environment": "Production",
+        "position": {
+          "x": 260,
+          "y": 600
+        }
       }
     },
     {
@@ -219,7 +295,11 @@
       "metadata": {
         "description": "trading-subnet-a sample Subnet.",
         "owner": "Example Owner",
-        "environment": "Production"
+        "environment": "Production",
+        "position": {
+          "x": 520,
+          "y": 750
+        }
       }
     },
     {
@@ -230,7 +310,11 @@
       "metadata": {
         "description": "equity-trading-dns sample DNS Record.",
         "owner": "Example Owner",
-        "environment": "Production"
+        "environment": "Production",
+        "position": {
+          "x": 520,
+          "y": 450
+        }
       }
     }
   ],
