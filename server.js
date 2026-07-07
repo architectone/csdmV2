@@ -54,22 +54,22 @@ function validateOrThrow(model) {
 function backupCurrentModel() {
   fs.mkdirSync(BACKUP_DIR, { recursive: true });
   if (!fs.existsSync(DATA_FILE)) return null;
+
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   const backup = path.join(BACKUP_DIR, `csdmData.${stamp}.json`);
   fs.copyFileSync(DATA_FILE, backup);
   return backup;
 }
 
-function writeModel(model, options = {}) {
+function writeModel(model) {
   const normalized = validateOrThrow(model);
-  const backup = options.backup !== false;
   fs.mkdirSync(BACKUP_DIR, { recursive: true });
 
   const tmp = `${DATA_FILE}.${process.pid}.${Date.now()}.tmp`;
   const payload = JSON.stringify(normalized, null, 2);
 
   try {
-    if (backup) backupCurrentModel();
+    backupCurrentModel();
     fs.writeFileSync(tmp, payload, 'utf8');
     JSON.parse(fs.readFileSync(tmp, 'utf8'));
     fs.renameSync(tmp, DATA_FILE);
@@ -82,20 +82,40 @@ function writeModel(model, options = {}) {
   }
 }
 
+
+function writeModelWithoutBackup(model) {
+  const normalized = validateOrThrow(model);
+  fs.mkdirSync(BACKUP_DIR, { recursive: true });
+  const tmp = `${DATA_FILE}.${process.pid}.${Date.now()}.tmp`;
+  const payload = JSON.stringify(normalized, null, 2);
+  try {
+    fs.writeFileSync(tmp, payload, 'utf8');
+    JSON.parse(fs.readFileSync(tmp, 'utf8'));
+    fs.renameSync(tmp, DATA_FILE);
+  } catch (err) {
+    try { if (fs.existsSync(tmp)) fs.unlinkSync(tmp); } catch (_) {}
+    err.message = `Unable to write CSDM data safely: ${err.message}`;
+    throw err;
+  }
+}
+
 function resolveSavedModelPath(file) {
   if (!file || file === 'current') return DATA_FILE;
+
   const safeName = path.basename(file);
   if (safeName !== file || !BACKUP_FILE_PATTERN.test(safeName)) {
     const err = new Error('Invalid saved model file name.');
     err.status = 400;
     throw err;
   }
+
   const fullPath = path.join(BACKUP_DIR, safeName);
   if (!fs.existsSync(fullPath)) {
     const err = new Error('Saved model was not found.');
     err.status = 404;
     throw err;
   }
+
   return fullPath;
 }
 
@@ -108,6 +128,7 @@ function summarizeModelFile(filePath, file, displayName, isCurrent) {
     modified: stat.mtime.toISOString(),
     size: stat.size
   };
+
   try {
     const model = normalizeModel(readJson(filePath, `Unable to read ${displayName}`));
     const v = validateGraph(model);
@@ -121,14 +142,17 @@ function summarizeModelFile(filePath, file, displayName, isCurrent) {
     summary.valid = false;
     summary.error = err.message;
   }
+
   return summary;
 }
 
 function listSavedModels() {
   const models = [];
+
   if (fs.existsSync(DATA_FILE)) {
     models.push(summarizeModelFile(DATA_FILE, 'current', 'Current working model', true));
   }
+
   if (fs.existsSync(BACKUP_DIR)) {
     const backups = fs.readdirSync(BACKUP_DIR)
       .filter(name => BACKUP_FILE_PATTERN.test(name))
@@ -136,6 +160,7 @@ function listSavedModels() {
       .sort((a, b) => new Date(b.modified) - new Date(a.modified));
     models.push(...backups);
   }
+
   return models;
 }
 
@@ -144,40 +169,66 @@ function readSavedModel(file) {
 }
 
 app.get('/api/csdm', (req, res, next) => {
-  try { res.json(readModel()); } catch (err) { next(err); }
+  try {
+    res.json(readModel());
+  } catch (err) {
+    next(err);
+  }
 });
 
-// Existing server-side save behavior remains available for API callers and creates a backup.
 app.post('/api/csdm', (req, res, next) => {
-  try { writeModel(req.body, { backup: true }); res.json({ success: true }); } catch (err) { next(err); }
+  try {
+    writeModel(req.body);
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
 });
 
 app.get('/api/csdm/models', (req, res, next) => {
-  try { res.json({ models: listSavedModels() }); } catch (err) { next(err); }
+  try {
+    res.json({ models: listSavedModels() });
+  } catch (err) {
+    next(err);
+  }
 });
 
 app.get('/api/csdm/model', (req, res, next) => {
-  try { res.json(readSavedModel(req.query.file || 'current')); } catch (err) { next(err); }
+  try {
+    res.json(readSavedModel(req.query.file || 'current'));
+  } catch (err) {
+    next(err);
+  }
 });
 
-// Loading a model intentionally overwrites the current model WITHOUT backing it up first.
 app.post('/api/csdm/load', (req, res, next) => {
   try {
     const file = req.body && req.body.file;
     const model = readSavedModel(file || 'current');
-    if (file && file !== 'current') writeModel(model, { backup: false });
-    res.json({ success: true, loadedFrom: file || 'current', model: readModel() });
-  } catch (err) { next(err); }
+
+    if (file && file !== 'current') {
+      writeModelWithoutBackup(model);
+    }
+
+    res.json({
+      success: true,
+      loadedFrom: file || 'current',
+      model: readModel()
+    });
+  } catch (err) {
+    next(err);
+  }
 });
 
-// Used by the browser Load dialog when the user selects a local JSON file.
-// This also overwrites the current model WITHOUT creating a backup first.
+
 app.post('/api/csdm/load-content', (req, res, next) => {
   try {
     const model = validateOrThrow(req.body);
-    writeModel(model, { backup: false });
+    writeModelWithoutBackup(model);
     res.json({ success: true, model: readModel() });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok', phase: '3.7' }));
@@ -192,4 +243,10 @@ if (require.main === module) {
   app.listen(PORT, () => console.log(`CSDM Graph-Linking Engine running at http://localhost:${PORT}`));
 }
 
-module.exports = { app, readModel, writeModel, listSavedModels, readSavedModel };
+module.exports = {
+  app,
+  readModel,
+  writeModel,
+  listSavedModels,
+  readSavedModel
+};

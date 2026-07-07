@@ -57,8 +57,8 @@
         "owner": "Example Owner",
         "environment": "Production",
         "position": {
-          "x": 0,
-          "y": 150
+          "x": -2,
+          "y": 227
         }
       }
     },
@@ -72,8 +72,8 @@
         "owner": "Example Owner",
         "environment": "Production",
         "position": {
-          "x": 0,
-          "y": 300
+          "x": -168,
+          "y": 297
         }
       }
     },
@@ -87,8 +87,8 @@
         "owner": "Example Owner",
         "environment": "Production",
         "position": {
-          "x": -520,
-          "y": 450
+          "x": -522,
+          "y": 310
         }
       }
     },
@@ -312,8 +312,8 @@
         "owner": "Example Owner",
         "environment": "Production",
         "position": {
-          "x": 520,
-          "y": 450
+          "x": 253,
+          "y": 299
         }
       }
     }
