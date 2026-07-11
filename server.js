@@ -82,7 +82,6 @@ function writeModel(model) {
   }
 }
 
-
 function writeModelWithoutBackup(model) {
   const normalized = validateOrThrow(model);
   fs.mkdirSync(BACKUP_DIR, { recursive: true });
