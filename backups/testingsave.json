@@ -433,6 +433,16 @@
       "from": "dns-trading",
       "to": "lb-trading",
       "label": "Points to"
+    },
+    {
+      "from": "svc-equity-trading",
+      "to": "cluster-pgh-core",
+      "label": "Runs on"
+    },
+    {
+      "from": "svc-equity-trading",
+      "to": "node-pgh-01",
+      "label": "Runs on"
     }
   ]
 }
