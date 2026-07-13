@@ -325,8 +325,8 @@
       "label": "Provides"
     },
     {
-      "from": "svc-equity-trading",
-      "to": "app-charles-river",
+      "from": "app-charles-river",
+      "to": "svc-equity-trading",
       "label": "Instantiates"
     },
     {
@@ -337,7 +337,7 @@
     {
       "from": "svc-equity-trading",
       "to": "cluster-pgh-core",
-      "label": "Runs on"
+      "label": "Depends on"
     },
     {
       "from": "cluster-pgh-core",

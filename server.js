@@ -2,6 +2,8 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const { validateGraph } = require('./shared/csdmValidator');
+const schema = require('./shared/csdmSchema');
+const { migrateModel } = require('./shared/migrations');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -40,7 +42,7 @@ function normalizeModel(model) {
 }
 
 function validateOrThrow(model) {
-  const normalized = normalizeModel(model);
+  const normalized = normalizeModel(migrateModel(model, schema));
   const v = validateGraph(normalized);
   if (!v.valid) {
     const err = new Error('CSDM model validation failed.');
