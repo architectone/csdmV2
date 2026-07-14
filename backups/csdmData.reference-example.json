@@ -1,6 +1,6 @@
 {
   "schemaVersion": "phase-3.7",
-  "seedModel": "Custom / Edited Model",
+  "seedModel": "CSDM Reference Example",
   "nodes": [
     {
       "id": "cap-trading",
