@@ -57,8 +57,8 @@
         "owner": "Example Owner",
         "environment": "Production",
         "position": {
-          "x": -2,
-          "y": 227
+          "x": -182,
+          "y": 138
         }
       }
     },
@@ -316,6 +316,58 @@
           "y": 299
         }
       }
+    },
+    {
+      "id": "app-1783905775146-972",
+      "label": "Bloomberg",
+      "type": "Business Application",
+      "domain": "Design & Planning",
+      "metadata": {
+        "description": "Bloomberg",
+        "position": {
+          "x": 334,
+          "y": -158
+        }
+      }
+    },
+    {
+      "id": "svc-1783905775146-211",
+      "label": "Bloomberg Prod",
+      "type": "Application Service",
+      "domain": "Service Delivery",
+      "metadata": {
+        "description": "Bloomberg Prod",
+        "position": {
+          "x": 397,
+          "y": -2
+        }
+      }
+    },
+    {
+      "id": "off-1783905775146-406",
+      "label": "Bloomberg Prod",
+      "type": "Business Service Offering",
+      "domain": "Service Consumption",
+      "metadata": {
+        "description": "Bloomberg Prod",
+        "position": {
+          "x": 410,
+          "y": 139
+        }
+      }
+    },
+    {
+      "id": "off-1783907704611-133",
+      "label": "Equity Development",
+      "type": "Business Service Offering",
+      "domain": "Service Consumption",
+      "metadata": {
+        "description": "Equity Development",
+        "position": {
+          "x": 106,
+          "y": 138
+        }
+      }
     }
   ],
   "edges": [
@@ -325,8 +377,8 @@
       "label": "Provides"
     },
     {
-      "from": "svc-equity-trading",
-      "to": "app-charles-river",
+      "from": "app-charles-river",
+      "to": "svc-equity-trading",
       "label": "Instantiates"
     },
     {
@@ -337,7 +389,7 @@
     {
       "from": "svc-equity-trading",
       "to": "cluster-pgh-core",
-      "label": "Runs on"
+      "label": "Depends on"
     },
     {
       "from": "cluster-pgh-core",
@@ -433,6 +485,46 @@
       "from": "dns-trading",
       "to": "lb-trading",
       "label": "Points to"
+    },
+    {
+      "from": "app-1783905775146-972",
+      "to": "cap-trading",
+      "label": "Provides"
+    },
+    {
+      "from": "app-1783905775146-972",
+      "to": "svc-1783905775146-211",
+      "label": "Instantiates"
+    },
+    {
+      "from": "off-1783905775146-406",
+      "to": "svc-1783905775146-211",
+      "label": "Depends on"
+    },
+    {
+      "from": "svc-1783905775146-211",
+      "to": "cluster-pgh-core",
+      "label": "Depends on"
+    },
+    {
+      "from": "app-charles-river",
+      "to": "cap-trading",
+      "label": "Provides"
+    },
+    {
+      "from": "app-charles-river",
+      "to": "svc-equity-trading",
+      "label": "Instantiates"
+    },
+    {
+      "from": "off-1783907704611-133",
+      "to": "svc-equity-trading",
+      "label": "Depends on"
+    },
+    {
+      "from": "svc-equity-trading",
+      "to": "cluster-pgh-core",
+      "label": "Depends on"
     }
   ]
 }
