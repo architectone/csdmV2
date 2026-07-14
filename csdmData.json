@@ -51,14 +51,14 @@
       "id": "offering-equity-prod",
       "label": "Equity Production",
       "domain": "Service Consumption",
-      "type": "Business Service Offering",
+      "type": "Service Offering",
       "metadata": {
-        "description": "Equity Production sample Business Service Offering.",
+        "description": "Equity Production sample Service Offering (a published SLA/tier of the Equity Trading business service).",
         "owner": "Example Owner",
         "environment": "Production",
         "position": {
-          "x": -2,
-          "y": 227
+          "x": 320,
+          "y": -150
         }
       }
     },
@@ -316,13 +316,28 @@
           "y": 299
         }
       }
+    },
+    {
+      "id": "bizsvc-equity-trading",
+      "label": "Equity Trading Service",
+      "domain": "Service Consumption",
+      "type": "Business Service",
+      "metadata": {
+        "description": "Equity Trading sample Business Service — the consumable service offered to customers.",
+        "owner": "Example Owner",
+        "environment": "Production",
+        "position": {
+          "x": 320,
+          "y": -300
+        }
+      }
     }
   ],
   "edges": [
     {
       "from": "app-charles-river",
       "to": "cap-trading",
-      "label": "Provides"
+      "label": "Realizes"
     },
     {
       "from": "app-charles-river",
@@ -433,6 +448,11 @@
       "from": "dns-trading",
       "to": "lb-trading",
       "label": "Points to"
+    },
+    {
+      "from": "bizsvc-equity-trading",
+      "to": "offering-equity-prod",
+      "label": "Offers"
     }
   ]
 }
