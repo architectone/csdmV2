@@ -1,0 +1,584 @@
+{
+  "schemaVersion": "phase-3.7",
+  "seedModel": "CSDM Shared-Infrastructure Example",
+  "nodes": [
+    {
+      "id": "cap-trading",
+      "label": "Trading",
+      "domain": "Design & Planning",
+      "type": "Business Capability",
+      "metadata": {
+        "description": "Trading business capability — the organizations ability to execute trades across asset classes.",
+        "owner": "Trading Desk Leadership",
+        "criticality": "Mission Critical",
+        "position": {
+          "x": 0,
+          "y": -460
+        }
+      }
+    },
+    {
+      "id": "app-cr",
+      "label": "Charles River",
+      "domain": "Design & Planning",
+      "type": "Business Application",
+      "metadata": {
+        "description": "Equity order & execution management application.",
+        "owner": "Equity Platform Team",
+        "lifecycleStage": "Active",
+        "criticality": "Tier 1 (Mission Critical)",
+        "position": {
+          "x": -360,
+          "y": -320
+        }
+      }
+    },
+    {
+      "id": "svc-eq",
+      "label": "Equity Trading",
+      "domain": "Service Delivery",
+      "type": "Application Service",
+      "metadata": {
+        "description": "Running Equity Trading service (Production).",
+        "owner": "Trading Operations",
+        "environment": "Production",
+        "operationalStatus": "Operational",
+        "position": {
+          "x": -360,
+          "y": -170
+        }
+      }
+    },
+    {
+      "id": "bsvc-eq",
+      "label": "Equity Trading Service",
+      "domain": "Service Consumption",
+      "type": "Business Service",
+      "metadata": {
+        "description": "Equity trading service consumed by the equity desk.",
+        "owner": "Equity Service Owner",
+        "consumerType": "Internal",
+        "position": {
+          "x": -620,
+          "y": -320
+        }
+      }
+    },
+    {
+      "id": "off-eq",
+      "label": "Equity Production",
+      "domain": "Service Consumption",
+      "type": "Service Offering",
+      "metadata": {
+        "description": "Production offering of Equity Trading.",
+        "owner": "Equity Service Owner",
+        "availabilityTarget": "99.9%",
+        "supportHours": "24x7",
+        "position": {
+          "x": -620,
+          "y": -170
+        }
+      }
+    },
+    {
+      "id": "app-fx",
+      "label": "FX Platform",
+      "domain": "Design & Planning",
+      "type": "Business Application",
+      "metadata": {
+        "description": "Foreign-exchange trading application.",
+        "owner": "FX Platform Team",
+        "lifecycleStage": "Active",
+        "criticality": "Tier 1 (Mission Critical)",
+        "position": {
+          "x": 360,
+          "y": -320
+        }
+      }
+    },
+    {
+      "id": "svc-fx",
+      "label": "FX Trading",
+      "domain": "Service Delivery",
+      "type": "Application Service",
+      "metadata": {
+        "description": "Running FX Trading service (Production).",
+        "owner": "Trading Operations",
+        "environment": "Production",
+        "operationalStatus": "Operational",
+        "position": {
+          "x": 360,
+          "y": -170
+        }
+      }
+    },
+    {
+      "id": "bsvc-fx",
+      "label": "FX Trading Service",
+      "domain": "Service Consumption",
+      "type": "Business Service",
+      "metadata": {
+        "description": "FX trading service offered to external clients.",
+        "owner": "FX Service Owner",
+        "consumerType": "External",
+        "position": {
+          "x": 620,
+          "y": -320
+        }
+      }
+    },
+    {
+      "id": "off-fx",
+      "label": "FX Production",
+      "domain": "Service Consumption",
+      "type": "Service Offering",
+      "metadata": {
+        "description": "Production offering of FX Trading.",
+        "owner": "FX Service Owner",
+        "availabilityTarget": "99.5%",
+        "supportHours": "24x7",
+        "position": {
+          "x": 620,
+          "y": -170
+        }
+      }
+    },
+    {
+      "id": "k8s",
+      "label": "shared-trading-k8s",
+      "domain": "Infrastructure / Compute",
+      "type": "Kubernetes Cluster",
+      "metadata": {
+        "description": "Shared Kubernetes cluster hosting both trading services.",
+        "owner": "Platform Engineering",
+        "environment": "Production",
+        "monthlyCost": "8000",
+        "redundancy": "HA cluster",
+        "position": {
+          "x": 0,
+          "y": 40
+        }
+      }
+    },
+    {
+      "id": "node-1",
+      "label": "trading-node-01",
+      "domain": "Infrastructure / Compute",
+      "type": "Compute Node",
+      "metadata": {
+        "description": "Cluster worker node.",
+        "owner": "Platform Engineering",
+        "environment": "Production",
+        "monthlyCost": "1500",
+        "redundancy": "Redundant pair",
+        "position": {
+          "x": -160,
+          "y": 180
+        }
+      }
+    },
+    {
+      "id": "node-2",
+      "label": "trading-node-02",
+      "domain": "Infrastructure / Compute",
+      "type": "Compute Node",
+      "metadata": {
+        "description": "Cluster worker node.",
+        "owner": "Platform Engineering",
+        "environment": "Production",
+        "monthlyCost": "1500",
+        "redundancy": "Redundant pair",
+        "position": {
+          "x": 160,
+          "y": 180
+        }
+      }
+    },
+    {
+      "id": "lb",
+      "label": "trading-shared-lb",
+      "domain": "Infrastructure / Network",
+      "type": "Load Balancer",
+      "metadata": {
+        "description": "Shared load balancer fronting both services.",
+        "owner": "Network Team",
+        "environment": "Production",
+        "monthlyCost": "400",
+        "position": {
+          "x": 0,
+          "y": -40
+        }
+      }
+    },
+    {
+      "id": "kv",
+      "label": "trading-key-vault",
+      "domain": "Infrastructure / Security",
+      "type": "Key Vault",
+      "metadata": {
+        "description": "Shared key vault holding trading secrets.",
+        "owner": "Security Team",
+        "environment": "Production",
+        "dataClassification": "Restricted",
+        "position": {
+          "x": 0,
+          "y": 320
+        }
+      }
+    },
+    {
+      "id": "db-eq",
+      "label": "equity-orders-db",
+      "domain": "Infrastructure / Data",
+      "type": "Database Instance",
+      "metadata": {
+        "description": "Equity orders database.",
+        "owner": "DBA Team",
+        "environment": "Production",
+        "monthlyCost": "1200",
+        "redundancy": "Redundant pair",
+        "dataClassification": "Confidential",
+        "position": {
+          "x": -360,
+          "y": 180
+        }
+      }
+    },
+    {
+      "id": "vol-eq",
+      "label": "equity-data-vol",
+      "domain": "Infrastructure / Storage",
+      "type": "Storage Volume",
+      "metadata": {
+        "description": "Equity database storage volume.",
+        "owner": "Storage Team",
+        "environment": "Production",
+        "monthlyCost": "300",
+        "dataClassification": "Confidential",
+        "position": {
+          "x": -360,
+          "y": 320
+        }
+      }
+    },
+    {
+      "id": "secret-eq",
+      "label": "equity-db-secret",
+      "domain": "Infrastructure / Security",
+      "type": "Secret",
+      "metadata": {
+        "description": "Equity DB credential secret.",
+        "owner": "Security Team",
+        "environment": "Production",
+        "dataClassification": "Confidential",
+        "position": {
+          "x": -160,
+          "y": 320
+        }
+      }
+    },
+    {
+      "id": "ns-eq",
+      "label": "equity-prod-ns",
+      "domain": "Infrastructure / Runtime",
+      "type": "Namespace",
+      "metadata": {
+        "description": "Equity production namespace.",
+        "owner": "Platform Engineering",
+        "environment": "Production",
+        "position": {
+          "x": -360,
+          "y": 460
+        }
+      }
+    },
+    {
+      "id": "wl-eq",
+      "label": "equity-order-router",
+      "domain": "Infrastructure / Runtime",
+      "type": "Workload",
+      "metadata": {
+        "description": "Equity order router workload.",
+        "owner": "Equity Platform Team",
+        "environment": "Production",
+        "position": {
+          "x": -360,
+          "y": 600
+        }
+      }
+    },
+    {
+      "id": "ingress-eq",
+      "label": "equity-ingress",
+      "domain": "Infrastructure / Network",
+      "type": "Ingress",
+      "metadata": {
+        "description": "Equity ingress.",
+        "owner": "Network Team",
+        "environment": "Production",
+        "position": {
+          "x": -160,
+          "y": -40
+        }
+      }
+    },
+    {
+      "id": "db-fx",
+      "label": "fx-orders-db",
+      "domain": "Infrastructure / Data",
+      "type": "Database Instance",
+      "metadata": {
+        "description": "FX orders database.",
+        "owner": "DBA Team",
+        "environment": "Production",
+        "monthlyCost": "1000",
+        "redundancy": "Redundant pair",
+        "dataClassification": "Confidential",
+        "position": {
+          "x": 360,
+          "y": 180
+        }
+      }
+    },
+    {
+      "id": "vol-fx",
+      "label": "fx-data-vol",
+      "domain": "Infrastructure / Storage",
+      "type": "Storage Volume",
+      "metadata": {
+        "description": "FX database storage volume.",
+        "owner": "Storage Team",
+        "environment": "Production",
+        "monthlyCost": "250",
+        "dataClassification": "Confidential",
+        "position": {
+          "x": 360,
+          "y": 320
+        }
+      }
+    },
+    {
+      "id": "secret-fx",
+      "label": "fx-db-secret",
+      "domain": "Infrastructure / Security",
+      "type": "Secret",
+      "metadata": {
+        "description": "FX DB credential secret.",
+        "owner": "Security Team",
+        "environment": "Production",
+        "dataClassification": "Confidential",
+        "position": {
+          "x": 160,
+          "y": 320
+        }
+      }
+    },
+    {
+      "id": "ns-fx",
+      "label": "fx-prod-ns",
+      "domain": "Infrastructure / Runtime",
+      "type": "Namespace",
+      "metadata": {
+        "description": "FX production namespace.",
+        "owner": "Platform Engineering",
+        "environment": "Production",
+        "position": {
+          "x": 360,
+          "y": 460
+        }
+      }
+    },
+    {
+      "id": "wl-fx",
+      "label": "fx-order-router",
+      "domain": "Infrastructure / Runtime",
+      "type": "Workload",
+      "metadata": {
+        "description": "FX order router workload.",
+        "owner": "FX Platform Team",
+        "environment": "Production",
+        "position": {
+          "x": 360,
+          "y": 600
+        }
+      }
+    },
+    {
+      "id": "ingress-fx",
+      "label": "fx-ingress",
+      "domain": "Infrastructure / Network",
+      "type": "Ingress",
+      "metadata": {
+        "description": "FX ingress.",
+        "owner": "Network Team",
+        "environment": "Production",
+        "position": {
+          "x": 160,
+          "y": -40
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "app-cr",
+      "to": "cap-trading",
+      "label": "Realizes"
+    },
+    {
+      "from": "app-fx",
+      "to": "cap-trading",
+      "label": "Realizes"
+    },
+    {
+      "from": "app-cr",
+      "to": "svc-eq",
+      "label": "Instantiates"
+    },
+    {
+      "from": "app-fx",
+      "to": "svc-fx",
+      "label": "Instantiates"
+    },
+    {
+      "from": "bsvc-eq",
+      "to": "off-eq",
+      "label": "Offers"
+    },
+    {
+      "from": "bsvc-fx",
+      "to": "off-fx",
+      "label": "Offers"
+    },
+    {
+      "from": "off-eq",
+      "to": "svc-eq",
+      "label": "Depends on"
+    },
+    {
+      "from": "off-fx",
+      "to": "svc-fx",
+      "label": "Depends on"
+    },
+    {
+      "from": "svc-eq",
+      "to": "k8s",
+      "label": "Depends on"
+    },
+    {
+      "from": "svc-eq",
+      "to": "lb",
+      "label": "Depends on"
+    },
+    {
+      "from": "svc-fx",
+      "to": "k8s",
+      "label": "Depends on"
+    },
+    {
+      "from": "svc-fx",
+      "to": "lb",
+      "label": "Depends on"
+    },
+    {
+      "from": "svc-eq",
+      "to": "db-eq",
+      "label": "Depends on"
+    },
+    {
+      "from": "svc-eq",
+      "to": "secret-eq",
+      "label": "Depends on"
+    },
+    {
+      "from": "svc-fx",
+      "to": "db-fx",
+      "label": "Depends on"
+    },
+    {
+      "from": "svc-fx",
+      "to": "secret-fx",
+      "label": "Depends on"
+    },
+    {
+      "from": "k8s",
+      "to": "node-1",
+      "label": "Contains"
+    },
+    {
+      "from": "k8s",
+      "to": "node-2",
+      "label": "Contains"
+    },
+    {
+      "from": "k8s",
+      "to": "ns-eq",
+      "label": "Contains"
+    },
+    {
+      "from": "k8s",
+      "to": "ns-fx",
+      "label": "Contains"
+    },
+    {
+      "from": "ns-eq",
+      "to": "wl-eq",
+      "label": "Contains"
+    },
+    {
+      "from": "ns-fx",
+      "to": "wl-fx",
+      "label": "Contains"
+    },
+    {
+      "from": "wl-eq",
+      "to": "node-1",
+      "label": "Runs on"
+    },
+    {
+      "from": "wl-fx",
+      "to": "node-2",
+      "label": "Runs on"
+    },
+    {
+      "from": "db-eq",
+      "to": "vol-eq",
+      "label": "Uses"
+    },
+    {
+      "from": "db-fx",
+      "to": "vol-fx",
+      "label": "Uses"
+    },
+    {
+      "from": "kv",
+      "to": "secret-eq",
+      "label": "Contains"
+    },
+    {
+      "from": "kv",
+      "to": "secret-fx",
+      "label": "Contains"
+    },
+    {
+      "from": "lb",
+      "to": "ingress-eq",
+      "label": "Routes to"
+    },
+    {
+      "from": "lb",
+      "to": "ingress-fx",
+      "label": "Routes to"
+    },
+    {
+      "from": "ingress-eq",
+      "to": "wl-eq",
+      "label": "Routes to"
+    },
+    {
+      "from": "ingress-fx",
+      "to": "wl-fx",
+      "label": "Routes to"
+    }
+  ]
+}
