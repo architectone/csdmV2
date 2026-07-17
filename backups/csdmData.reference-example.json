@@ -14,7 +14,9 @@
         "position": {
           "x": -380,
           "y": -300
-        }
+        },
+        "revenueAmount": "2400000",
+        "revenuePeriod": "per day"
       }
     },
     {
