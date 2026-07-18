@@ -318,6 +318,82 @@
           "y": 60
         }
       }
+    },
+    {
+      "id": "portfolio",
+      "label": "Trading Services Portfolio",
+      "domain": "Service Consumption",
+      "type": "Service Portfolio",
+      "metadata": {
+        "description": "Portfolio of trading business services and applications.",
+        "owner": "Head of Trading Technology",
+        "organizedBy": "Capability",
+        "position": {
+          "x": 560,
+          "y": -440
+        }
+      }
+    },
+    {
+      "id": "commit",
+      "label": "Gold Tier – 99.9% / 30-min response",
+      "domain": "Service Consumption",
+      "type": "Service Commitment",
+      "metadata": {
+        "description": "Gold service commitment for the production offering.",
+        "owner": "Equity Service Owner",
+        "commitmentTier": "Gold",
+        "target": "99.9% availability, 30-min response 24x7",
+        "scope": "Equity trading desk",
+        "position": {
+          "x": 560,
+          "y": -80
+        }
+      }
+    },
+    {
+      "id": "catalog",
+      "label": "Trading Service Catalog",
+      "domain": "Service Consumption",
+      "type": "Service Catalog",
+      "metadata": {
+        "description": "Catalog of trading services consumers can request.",
+        "owner": "Service Desk",
+        "position": {
+          "x": 760,
+          "y": -320
+        }
+      }
+    },
+    {
+      "id": "catitem",
+      "label": "Request Equity Trading Access",
+      "domain": "Service Consumption",
+      "type": "Catalog Item",
+      "metadata": {
+        "description": "Requestable access to the Equity Trading production offering.",
+        "owner": "Service Desk",
+        "requestType": "Subscription",
+        "position": {
+          "x": 760,
+          "y": -170
+        }
+      }
+    },
+    {
+      "id": "subscr",
+      "label": "Equity Desk Users",
+      "domain": "Service Consumption",
+      "type": "Subscription",
+      "metadata": {
+        "description": "Subscription granting the equity desk access to the offering.",
+        "owner": "Equity Desk",
+        "userCount": "48",
+        "position": {
+          "x": 560,
+          "y": 20
+        }
+      }
     }
   ],
   "edges": [
@@ -454,6 +530,41 @@
     {
       "from": "tech-svc",
       "to": "svc",
+      "label": "Depends on"
+    },
+    {
+      "from": "bsvc",
+      "to": "cap",
+      "label": "Provides"
+    },
+    {
+      "from": "off",
+      "to": "commit",
+      "label": "Contains"
+    },
+    {
+      "from": "portfolio",
+      "to": "bsvc",
+      "label": "Contains"
+    },
+    {
+      "from": "portfolio",
+      "to": "app",
+      "label": "Contains"
+    },
+    {
+      "from": "catalog",
+      "to": "catitem",
+      "label": "Contains"
+    },
+    {
+      "from": "catitem",
+      "to": "off",
+      "label": "Depends on"
+    },
+    {
+      "from": "subscr",
+      "to": "off",
       "label": "Depends on"
     }
   ]
