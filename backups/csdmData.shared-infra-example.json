@@ -425,12 +425,12 @@
     {
       "from": "app-cr",
       "to": "cap-trading",
-      "label": "Realizes"
+      "label": "Provides"
     },
     {
       "from": "app-fx",
       "to": "cap-trading",
-      "label": "Realizes"
+      "label": "Provides"
     },
     {
       "from": "app-cr",

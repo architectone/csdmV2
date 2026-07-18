@@ -4,13 +4,15 @@
   "nodes": [
     {
       "id": "cap-trading",
-      "label": "Trading",
+      "label": "Equity Trading",
       "domain": "Design & Planning",
       "type": "Business Capability",
       "metadata": {
         "description": "Trading business capability — the organization's ability to execute trades.",
         "owner": "Trading Desk Leadership",
         "criticality": "Mission Critical",
+        "revenueAmount": "1000000",
+        "revenuePeriod": "per hour",
         "position": {
           "x": -236,
           "y": -304
@@ -19,7 +21,7 @@
     },
     {
       "id": "app-charles-river",
-      "label": "Charles River",
+      "label": "Charles River IMS",
       "domain": "Design & Planning",
       "type": "Business Application",
       "metadata": {
@@ -35,7 +37,7 @@
     },
     {
       "id": "svc-equity-trading",
-      "label": "Equity Trading Prod",
+      "label": "Charles River – Production",
       "domain": "Service Delivery",
       "type": "Application Service",
       "metadata": {
@@ -51,7 +53,7 @@
     },
     {
       "id": "offering-equity-prod",
-      "label": "Equity Production",
+      "label": "Equity Trading – Production (99.9%)",
       "domain": "Service Consumption",
       "type": "Service Offering",
       "metadata": {
@@ -322,7 +324,7 @@
     },
     {
       "id": "bizsvc-equity-trading",
-      "label": "Equity Trading Service",
+      "label": "Electronic Equity Trading",
       "domain": "Service Consumption",
       "type": "Business Service",
       "metadata": {
@@ -337,7 +339,7 @@
     },
     {
       "id": "applserv-1783994313756",
-      "label": "Equity Trading (Stage)",
+      "label": "Charles River – Stage",
       "type": "Application Service",
       "domain": "Service Delivery",
       "metadata": {
@@ -533,7 +535,7 @@
     },
     {
       "id": "off-1783994792958-620",
-      "label": "Equity Stage",
+      "label": "Equity Trading – Stage (Best Effort)",
       "type": "Service Offering",
       "domain": "Service Consumption",
       "metadata": {
@@ -555,8 +557,8 @@
       "metadata": {
         "description": "PWAPP001CRDT",
         "position": {
-          "x": 102,
-          "y": 252
+          "x": 129,
+          "y": 243
         }
       }
     }
