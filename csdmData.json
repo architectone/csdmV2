@@ -64,7 +64,8 @@
         "position": {
           "x": -320,
           "y": -170
-        }
+        },
+        "populationMethod": "Service Mapping (top-down discovery)"
       }
     },
     {
@@ -268,6 +269,55 @@
           "y": 600
         }
       }
+    },
+    {
+      "id": "tech-svc",
+      "label": "Charles River Platform Service",
+      "domain": "Service Delivery",
+      "type": "Technical Service",
+      "metadata": {
+        "description": "Technical service delivering the Charles River trading platform.",
+        "owner": "Trading Platform Team",
+        "operationalStatus": "Operational",
+        "position": {
+          "x": 0,
+          "y": -290
+        }
+      }
+    },
+    {
+      "id": "tech-off",
+      "label": "Charles River – Prod Tier (99.9%)",
+      "domain": "Service Delivery",
+      "type": "Technical Service Offering",
+      "metadata": {
+        "description": "Production tier of the Charles River technical service.",
+        "owner": "Trading Platform Team",
+        "availabilityTarget": "99.9%",
+        "supportGroup": "Trading Ops L2",
+        "approvalGroup": "Trading Change Board",
+        "position": {
+          "x": 0,
+          "y": -170
+        }
+      }
+    },
+    {
+      "id": "app-comp",
+      "label": "cr-order-engine",
+      "domain": "Service Delivery",
+      "type": "Application",
+      "metadata": {
+        "description": "Charles River order engine running application component.",
+        "owner": "Trading Platform Team",
+        "environment": "Production",
+        "version": "1.4.2",
+        "operationalStatus": "Operational",
+        "position": {
+          "x": -320,
+          "y": 60
+        }
+      }
     }
   ],
   "edges": [
@@ -287,11 +337,6 @@
       "label": "Offers"
     },
     {
-      "from": "off",
-      "to": "svc",
-      "label": "Depends on"
-    },
-    {
       "from": "app",
       "to": "io-orders",
       "label": "Uses"
@@ -299,26 +344,6 @@
     {
       "from": "io-orders",
       "to": "db",
-      "label": "Depends on"
-    },
-    {
-      "from": "svc",
-      "to": "vm-web",
-      "label": "Depends on"
-    },
-    {
-      "from": "svc",
-      "to": "vm-app",
-      "label": "Depends on"
-    },
-    {
-      "from": "svc",
-      "to": "vm-db",
-      "label": "Depends on"
-    },
-    {
-      "from": "svc",
-      "to": "vm-cache",
       "label": "Depends on"
     },
     {
@@ -382,14 +407,54 @@
       "label": "Runs on"
     },
     {
-      "from": "vm-db",
+      "from": "db",
+      "to": "vol",
+      "label": "Uses"
+    },
+    {
+      "from": "off",
+      "to": "tech-off",
+      "label": "Depends on"
+    },
+    {
+      "from": "tech-svc",
+      "to": "tech-off",
+      "label": "Offers"
+    },
+    {
+      "from": "tech-off",
+      "to": "svc",
+      "label": "Depends on"
+    },
+    {
+      "from": "svc",
+      "to": "app-comp",
+      "label": "Depends on"
+    },
+    {
+      "from": "app-comp",
+      "to": "vm-web",
+      "label": "Runs on"
+    },
+    {
+      "from": "app-comp",
+      "to": "vm-app",
+      "label": "Runs on"
+    },
+    {
+      "from": "app-comp",
       "to": "db",
       "label": "Uses"
     },
     {
       "from": "db",
-      "to": "vol",
-      "label": "Uses"
+      "to": "vm-db",
+      "label": "Runs on"
+    },
+    {
+      "from": "tech-svc",
+      "to": "svc",
+      "label": "Depends on"
     }
   ]
 }
