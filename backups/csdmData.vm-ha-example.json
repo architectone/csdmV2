@@ -14,8 +14,8 @@
         "revenueAmount": "1000000",
         "revenuePeriod": "per hour",
         "position": {
-          "x": 0,
-          "y": -460
+          "x": -321,
+          "y": -456
         }
       }
     },
@@ -29,8 +29,8 @@
         "owner": "Data Governance",
         "dataSensitivity": "PII",
         "position": {
-          "x": 300,
-          "y": -380
+          "x": -665,
+          "y": -314
         }
       }
     },
@@ -128,8 +128,8 @@
         "monthlyCost": "3000",
         "redundancy": "Single instance",
         "position": {
-          "x": -360,
-          "y": 150
+          "x": -85,
+          "y": 182
         }
       }
     },
@@ -145,8 +145,8 @@
         "monthlyCost": "3000",
         "redundancy": "Single instance",
         "position": {
-          "x": 0,
-          "y": 150
+          "x": 78,
+          "y": 180
         }
       }
     },
@@ -162,8 +162,8 @@
         "monthlyCost": "3000",
         "redundancy": "Single instance",
         "position": {
-          "x": 360,
-          "y": 150
+          "x": 354,
+          "y": 174
         }
       }
     },
@@ -179,8 +179,8 @@
         "monthlyCost": "600",
         "redundancy": "HA cluster",
         "position": {
-          "x": -460,
-          "y": 320
+          "x": -503,
+          "y": 316
         }
       }
     },
@@ -196,8 +196,8 @@
         "monthlyCost": "800",
         "redundancy": "HA cluster",
         "position": {
-          "x": -260,
-          "y": 320
+          "x": -304,
+          "y": 314
         }
       }
     },
@@ -248,8 +248,8 @@
         "redundancy": "Redundant pair",
         "dataClassification": "Confidential",
         "position": {
-          "x": 0,
-          "y": 470
+          "x": -657,
+          "y": 431
         }
       }
     },
@@ -265,8 +265,8 @@
         "monthlyCost": "300",
         "dataClassification": "Confidential",
         "position": {
-          "x": 0,
-          "y": 600
+          "x": -657,
+          "y": 593
         }
       }
     },
@@ -314,8 +314,8 @@
         "version": "1.4.2",
         "operationalStatus": "Operational",
         "position": {
-          "x": -320,
-          "y": 60
+          "x": -421,
+          "y": -46
         }
       }
     },
@@ -329,8 +329,8 @@
         "owner": "Head of Trading Technology",
         "organizedBy": "Capability",
         "position": {
-          "x": 560,
-          "y": -440
+          "x": 321,
+          "y": -461
         }
       }
     },
@@ -390,9 +390,226 @@
         "owner": "Equity Desk",
         "userCount": "48",
         "position": {
-          "x": 560,
-          "y": 20
+          "x": 317,
+          "y": 14
         }
+      }
+    },
+    {
+      "id": "phost-01",
+      "label": "srv-blade-01",
+      "domain": "Infrastructure / Physical",
+      "type": "Physical Host",
+      "metadata": {
+        "environment": "Production",
+        "position": {
+          "x": -351,
+          "y": 577
+        },
+        "description": "Bare-metal server hosting ESXi host 1 (web/app tier).",
+        "owner": "Data Center Ops",
+        "monthlyCost": "2500",
+        "redundancy": "Single instance",
+        "model": "Dell PowerEdge R760",
+        "rackUnit": "U10-U11",
+        "psuRedundancy": "Dual PSU"
+      }
+    },
+    {
+      "id": "phost-02",
+      "label": "srv-blade-02",
+      "domain": "Infrastructure / Physical",
+      "type": "Physical Host",
+      "metadata": {
+        "environment": "Production",
+        "position": {
+          "x": 9,
+          "y": 577
+        },
+        "description": "Bare-metal server hosting ESXi host 2 (database tier).",
+        "owner": "Data Center Ops",
+        "monthlyCost": "2500",
+        "redundancy": "Single instance",
+        "model": "Dell PowerEdge R760",
+        "rackUnit": "U12-U13",
+        "psuRedundancy": "Dual PSU"
+      }
+    },
+    {
+      "id": "phost-03",
+      "label": "srv-blade-03",
+      "domain": "Infrastructure / Physical",
+      "type": "Physical Host",
+      "metadata": {
+        "environment": "Production",
+        "position": {
+          "x": 369,
+          "y": 577
+        },
+        "description": "Bare-metal server hosting ESXi host 3 (cache tier).",
+        "owner": "Data Center Ops",
+        "monthlyCost": "2500",
+        "redundancy": "Single instance",
+        "model": "Dell PowerEdge R760",
+        "rackUnit": "U10-U11",
+        "psuRedundancy": "Dual PSU"
+      }
+    },
+    {
+      "id": "rack-a1",
+      "label": "Rack A1",
+      "domain": "Infrastructure / Physical",
+      "type": "Rack",
+      "metadata": {
+        "environment": "Production",
+        "position": {
+          "x": -351,
+          "y": 707
+        },
+        "description": "Rack A1 in the East data hall. Shares power and top-of-rack switching.",
+        "owner": "Data Center Ops",
+        "monthlyCost": "500",
+        "redundancy": "Single instance",
+        "row": "Row A",
+        "uCapacity": "42U",
+        "powerDraw": "6.5 kW"
+      }
+    },
+    {
+      "id": "rack-a2",
+      "label": "Rack A2",
+      "domain": "Infrastructure / Physical",
+      "type": "Rack",
+      "metadata": {
+        "environment": "Production",
+        "position": {
+          "x": 9,
+          "y": 707
+        },
+        "description": "Rack A2 in the East data hall. Shares power and top-of-rack switching.",
+        "owner": "Data Center Ops",
+        "monthlyCost": "500",
+        "redundancy": "Single instance",
+        "row": "Row A",
+        "uCapacity": "42U",
+        "powerDraw": "5.8 kW"
+      }
+    },
+    {
+      "id": "rack-b1",
+      "label": "Rack B1",
+      "domain": "Infrastructure / Physical",
+      "type": "Rack",
+      "metadata": {
+        "environment": "Production",
+        "position": {
+          "x": 369,
+          "y": 707
+        },
+        "description": "Rack B1 in the West data hall. Shares power and top-of-rack switching.",
+        "owner": "Data Center Ops",
+        "monthlyCost": "500",
+        "redundancy": "Single instance",
+        "row": "Row B",
+        "uCapacity": "42U",
+        "powerDraw": "3.2 kW"
+      }
+    },
+    {
+      "id": "dc-east",
+      "label": "SDDC-East",
+      "domain": "Infrastructure / Physical",
+      "type": "Data Center",
+      "metadata": {
+        "environment": "Production",
+        "position": {
+          "x": -171,
+          "y": 837
+        },
+        "description": "East software-defined data center realizing availability zone us-east-1a.",
+        "owner": "Cloud Platform",
+        "monthlyCost": "8000",
+        "redundancy": "Single instance",
+        "location": "Ashburn, VA",
+        "tier": "Tier III",
+        "powerFeed": "Dual feed (A+B)"
+      }
+    },
+    {
+      "id": "dc-west",
+      "label": "SDDC-West",
+      "domain": "Infrastructure / Physical",
+      "type": "Data Center",
+      "metadata": {
+        "environment": "Production",
+        "position": {
+          "x": 369,
+          "y": 837
+        },
+        "description": "West software-defined data center realizing availability zone us-east-1b.",
+        "owner": "Cloud Platform",
+        "monthlyCost": "8000",
+        "redundancy": "Single instance",
+        "location": "Manassas, VA",
+        "tier": "Tier III",
+        "powerFeed": "Dual feed (A+B)"
+      }
+    },
+    {
+      "id": "az-1",
+      "label": "us-east-1a",
+      "domain": "Infrastructure / Cloud",
+      "type": "Availability Zone",
+      "metadata": {
+        "environment": "Production",
+        "position": {
+          "x": -171,
+          "y": 967
+        },
+        "description": "Availability zone A. Isolated failure domain hosting the web/app and database tiers.",
+        "owner": "Cloud Platform",
+        "monthlyCost": "0",
+        "redundancy": "Single instance",
+        "provider": "AWS",
+        "zoneId": "use1-az1"
+      }
+    },
+    {
+      "id": "az-2",
+      "label": "us-east-1b",
+      "domain": "Infrastructure / Cloud",
+      "type": "Availability Zone",
+      "metadata": {
+        "environment": "Production",
+        "position": {
+          "x": 369,
+          "y": 967
+        },
+        "description": "Availability zone B. Isolated failure domain hosting the cache tier.",
+        "owner": "Cloud Platform",
+        "monthlyCost": "0",
+        "redundancy": "Single instance",
+        "provider": "AWS",
+        "zoneId": "use1-az2"
+      }
+    },
+    {
+      "id": "region-1",
+      "label": "aws-us-east-1",
+      "domain": "Infrastructure / Cloud",
+      "type": "Cloud Region",
+      "metadata": {
+        "environment": "Production",
+        "position": {
+          "x": 81,
+          "y": 1085
+        },
+        "description": "Single cloud region. Everything runs here — a region-wide event is the only total outage.",
+        "owner": "Cloud Platform",
+        "monthlyCost": "0",
+        "redundancy": "Single instance",
+        "provider": "AWS",
+        "regionCode": "us-east-1"
       }
     }
   ],
@@ -523,11 +740,6 @@
       "label": "Uses"
     },
     {
-      "from": "db",
-      "to": "vm-db",
-      "label": "Runs on"
-    },
-    {
       "from": "tech-svc",
       "to": "svc",
       "label": "Depends on"
@@ -566,6 +778,76 @@
       "from": "subscr",
       "to": "off",
       "label": "Depends on"
+    },
+    {
+      "from": "db",
+      "to": "vm-web",
+      "label": "Runs on"
+    },
+    {
+      "from": "esxi-01",
+      "to": "phost-01",
+      "label": "Runs on"
+    },
+    {
+      "from": "esxi-02",
+      "to": "phost-02",
+      "label": "Runs on"
+    },
+    {
+      "from": "esxi-03",
+      "to": "phost-03",
+      "label": "Runs on"
+    },
+    {
+      "from": "rack-a1",
+      "to": "phost-01",
+      "label": "Contains"
+    },
+    {
+      "from": "rack-a2",
+      "to": "phost-02",
+      "label": "Contains"
+    },
+    {
+      "from": "rack-b1",
+      "to": "phost-03",
+      "label": "Contains"
+    },
+    {
+      "from": "dc-east",
+      "to": "rack-a1",
+      "label": "Contains"
+    },
+    {
+      "from": "dc-east",
+      "to": "rack-a2",
+      "label": "Contains"
+    },
+    {
+      "from": "dc-west",
+      "to": "rack-b1",
+      "label": "Contains"
+    },
+    {
+      "from": "az-1",
+      "to": "dc-east",
+      "label": "Contains"
+    },
+    {
+      "from": "az-2",
+      "to": "dc-west",
+      "label": "Contains"
+    },
+    {
+      "from": "region-1",
+      "to": "az-1",
+      "label": "Contains"
+    },
+    {
+      "from": "region-1",
+      "to": "az-2",
+      "label": "Contains"
     }
   ]
 }
