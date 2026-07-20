@@ -3,783 +3,568 @@
   "seedModel": "Custom / Edited Model",
   "nodes": [
     {
-      "id": "cap-trading",
-      "label": "Trading",
+      "id": "cap",
+      "label": "Equity Trading",
       "domain": "Design & Planning",
       "type": "Business Capability",
       "metadata": {
-        "description": "Trading business capability — the organization's ability to execute trades.",
+        "description": "Equity trading capability.",
         "owner": "Trading Desk Leadership",
         "criticality": "Mission Critical",
+        "revenueAmount": "1000000",
+        "revenuePeriod": "per hour",
         "position": {
-          "x": -236,
-          "y": -304
+          "x": 0,
+          "y": -460
         }
       }
     },
     {
-      "id": "app-charles-river",
-      "label": "Charles River",
+      "id": "io-orders",
+      "label": "Order & Position Data",
+      "domain": "Design & Planning",
+      "type": "Information Object",
+      "metadata": {
+        "description": "Trade orders and positions handled by the trading application.",
+        "owner": "Data Governance",
+        "dataSensitivity": "PII",
+        "position": {
+          "x": -665,
+          "y": -314
+        }
+      }
+    },
+    {
+      "id": "app",
+      "label": "Charles River IMS",
       "domain": "Design & Planning",
       "type": "Business Application",
       "metadata": {
-        "description": "Charles River — the logical order & execution management application supporting Trading.",
+        "description": "Order & execution management application.",
         "owner": "Trading Platform Team",
         "lifecycleStage": "Active",
         "criticality": "Tier 1 (Mission Critical)",
+        "sourcingModel": "Purchased (COTS)",
         "position": {
-          "x": -236,
-          "y": -154
+          "x": -320,
+          "y": -320
         }
       }
     },
     {
-      "id": "svc-equity-trading",
-      "label": "Equity Trading Prod",
+      "id": "svc",
+      "label": "Charles River – Production",
       "domain": "Service Delivery",
       "type": "Application Service",
       "metadata": {
-        "description": "Equity Trading — the running application service instance of Charles River in Production.",
+        "description": "Running production instance of Charles River.",
         "owner": "Trading Operations",
         "environment": "Production",
         "operationalStatus": "Operational",
         "position": {
-          "x": -1,
-          "y": 16
-        }
+          "x": -320,
+          "y": -170
+        },
+        "populationMethod": "Service Mapping (top-down discovery)"
       }
     },
     {
-      "id": "offering-equity-prod",
-      "label": "Equity Production",
-      "domain": "Service Consumption",
-      "type": "Service Offering",
-      "metadata": {
-        "description": "Equity Production — the production offering of the Equity Trading Service with a 99.9% availability commitment.",
-        "owner": "Equity Trading Service Owner",
-        "availabilityTarget": "99.9%",
-        "supportHours": "24x7",
-        "position": {
-          "x": 315,
-          "y": -150
-        }
-      }
-    },
-    {
-      "id": "cluster-pgh-core",
-      "label": "pgh-core-k8s-cluster",
-      "domain": "Infrastructure / Compute",
-      "type": "Kubernetes Cluster",
-      "metadata": {
-        "description": "pgh-core-k8s-cluster sample Kubernetes Cluster.",
-        "owner": "Example Owner",
-        "environment": "Production",
-        "position": {
-          "x": -117,
-          "y": 250
-        }
-      }
-    },
-    {
-      "id": "node-pgh-01",
-      "label": "pgh-k8s-node-01",
-      "domain": "Infrastructure / Compute",
-      "type": "Compute Node",
-      "metadata": {
-        "description": "pgh-k8s-node-01 sample Compute Node.",
-        "owner": "Example Owner",
-        "environment": "Production",
-        "position": {
-          "x": -715,
-          "y": 440
-        }
-      }
-    },
-    {
-      "id": "ns-trading-prod",
-      "label": "trading-prod",
-      "domain": "Infrastructure / Runtime",
-      "type": "Namespace",
-      "metadata": {
-        "description": "trading-prod sample Namespace.",
-        "owner": "Example Owner",
-        "environment": "Production",
-        "position": {
-          "x": -449,
-          "y": 468
-        }
-      }
-    },
-    {
-      "id": "workload-order-router",
-      "label": "order-router",
-      "domain": "Infrastructure / Runtime",
-      "type": "Workload",
-      "metadata": {
-        "description": "order-router sample Workload.",
-        "owner": "Example Owner",
-        "environment": "Production",
-        "position": {
-          "x": -473,
-          "y": 608
-        }
-      }
-    },
-    {
-      "id": "pod-order-router-1",
-      "label": "order-router-pod-1",
-      "domain": "Infrastructure / Runtime",
-      "type": "Pod",
-      "metadata": {
-        "description": "order-router-pod-1 sample Pod.",
-        "owner": "Example Owner",
-        "environment": "Production",
-        "position": {
-          "x": -721,
-          "y": 732
-        }
-      }
-    },
-    {
-      "id": "container-order-router",
-      "label": "order-router-container",
-      "domain": "Infrastructure / Runtime",
-      "type": "Container",
-      "metadata": {
-        "description": "order-router-container sample Container.",
-        "owner": "Example Owner",
-        "environment": "Production",
-        "position": {
-          "x": -715,
-          "y": 906
-        }
-      }
-    },
-    {
-      "id": "image-order-router",
-      "label": "order-router:1.4.2",
-      "domain": "Infrastructure / Runtime",
-      "type": "Container Image",
-      "metadata": {
-        "description": "order-router:1.4.2 sample Container Image.",
-        "owner": "Example Owner",
-        "environment": "Production",
-        "position": {
-          "x": -713,
-          "y": 1022
-        }
-      }
-    },
-    {
-      "id": "db-orders",
-      "label": "trading-orders-db",
-      "domain": "Infrastructure / Data",
-      "type": "Database Instance",
-      "metadata": {
-        "description": "trading-orders-db sample Database Instance.",
-        "owner": "Example Owner",
-        "environment": "Production",
-        "position": {
-          "x": -465,
-          "y": 768
-        }
-      }
-    },
-    {
-      "id": "volume-orders",
-      "label": "orders-data-volume",
-      "domain": "Infrastructure / Storage",
-      "type": "Storage Volume",
-      "metadata": {
-        "description": "orders-data-volume sample Storage Volume.",
-        "owner": "Example Owner",
-        "environment": "Production",
-        "position": {
-          "x": -471,
-          "y": 916
-        }
-      }
-    },
-    {
-      "id": "lb-trading",
-      "label": "equity-trading-lb",
-      "domain": "Infrastructure / Network",
-      "type": "Load Balancer",
-      "metadata": {
-        "description": "equity-trading-lb sample Load Balancer.",
-        "owner": "Example Owner",
-        "environment": "Production",
-        "position": {
-          "x": 19,
-          "y": 581
-        }
-      }
-    },
-    {
-      "id": "ingress-trading",
-      "label": "equity-trading-ingress",
-      "domain": "Infrastructure / Network",
-      "type": "Ingress",
-      "metadata": {
-        "description": "equity-trading-ingress sample Ingress.",
-        "owner": "Example Owner",
-        "environment": "Production",
-        "position": {
-          "x": -248,
-          "y": 584
-        }
-      }
-    },
-    {
-      "id": "cert-trading",
-      "label": "equity-trading-cert",
-      "domain": "Infrastructure / Security",
-      "type": "Certificate",
-      "metadata": {
-        "description": "equity-trading-cert sample Certificate.",
-        "owner": "Example Owner",
-        "environment": "Production",
-        "position": {
-          "x": -26,
-          "y": 755
-        }
-      }
-    },
-    {
-      "id": "kv-trading",
-      "label": "trading-key-vault",
-      "domain": "Infrastructure / Security",
-      "type": "Key Vault",
-      "metadata": {
-        "description": "trading-key-vault sample Key Vault.",
-        "owner": "Example Owner",
-        "environment": "Production",
-        "position": {
-          "x": -49,
-          "y": 917
-        }
-      }
-    },
-    {
-      "id": "secret-db",
-      "label": "orders-db-secret",
-      "domain": "Infrastructure / Security",
-      "type": "Secret",
-      "metadata": {
-        "description": "orders-db-secret sample Secret.",
-        "owner": "Example Owner",
-        "environment": "Production",
-        "position": {
-          "x": -273,
-          "y": 919
-        }
-      }
-    },
-    {
-      "id": "netseg-prod",
-      "label": "prod-app-network",
-      "domain": "Infrastructure / Network",
-      "type": "Network Segment",
-      "metadata": {
-        "description": "prod-app-network sample Network Segment.",
-        "owner": "Example Owner",
-        "environment": "Production",
-        "position": {
-          "x": -976,
-          "y": 510
-        }
-      }
-    },
-    {
-      "id": "subnet-trading",
-      "label": "trading-subnet-a",
-      "domain": "Infrastructure / Network",
-      "type": "Subnet",
-      "metadata": {
-        "description": "trading-subnet-a sample Subnet.",
-        "owner": "Example Owner",
-        "environment": "Production",
-        "position": {
-          "x": -1004,
-          "y": 692
-        }
-      }
-    },
-    {
-      "id": "dns-trading",
-      "label": "equity-trading-dns",
-      "domain": "Infrastructure / Network",
-      "type": "DNS Record",
-      "metadata": {
-        "description": "equity-trading-dns sample DNS Record.",
-        "owner": "Example Owner",
-        "environment": "Production",
-        "position": {
-          "x": 202,
-          "y": 750
-        }
-      }
-    },
-    {
-      "id": "bizsvc-equity-trading",
-      "label": "Equity Trading Service",
+      "id": "bsvc",
+      "label": "Electronic Equity Trading",
       "domain": "Service Consumption",
       "type": "Business Service",
       "metadata": {
-        "description": "Equity Trading Service — the service consumed by the equity trading desk.",
-        "owner": "Equity Trading Service Owner",
+        "description": "Electronic equity trading service for the desk.",
+        "owner": "Equity Service Owner",
         "consumerType": "Internal",
         "position": {
-          "x": 418,
-          "y": -302
+          "x": 320,
+          "y": -320
         }
       }
     },
     {
-      "id": "applserv-1783994313756",
-      "label": "Equity Trading (Stage)",
-      "type": "Application Service",
-      "domain": "Service Delivery",
+      "id": "off",
+      "label": "Equity Trading – Production (99.9%)",
+      "domain": "Service Consumption",
+      "type": "Service Offering",
       "metadata": {
-        "description": "Equity Trading — the running application service instance of Charles River in Production.",
-        "owner": "Trading Operations",
-        "environment": "Staging",
+        "description": "Production offering, 99.9% availability.",
+        "owner": "Equity Service Owner",
+        "availabilityTarget": "99.9%",
+        "supportHours": "24x7",
+        "position": {
+          "x": 320,
+          "y": -170
+        }
+      }
+    },
+    {
+      "id": "vcluster",
+      "label": "vsphere-prod-cluster",
+      "domain": "Infrastructure / Compute",
+      "type": "Virtualization Cluster",
+      "metadata": {
+        "description": "vSphere HA cluster hosting the trading VMs.",
+        "owner": "Platform Engineering",
+        "environment": "Production",
+        "monthlyCost": "12000",
+        "redundancy": "HA cluster",
+        "position": {
+          "x": 0,
+          "y": 0
+        }
+      }
+    },
+    {
+      "id": "esxi-01",
+      "label": "esxi-host-01",
+      "domain": "Infrastructure / Compute",
+      "type": "Compute Node",
+      "metadata": {
+        "description": "ESXi hypervisor host 1.",
+        "owner": "Platform Engineering",
+        "environment": "Production",
+        "monthlyCost": "3000",
+        "redundancy": "Single instance",
+        "position": {
+          "x": -360,
+          "y": 150
+        }
+      }
+    },
+    {
+      "id": "esxi-02",
+      "label": "esxi-host-02",
+      "domain": "Infrastructure / Compute",
+      "type": "Compute Node",
+      "metadata": {
+        "description": "ESXi hypervisor host 2.",
+        "owner": "Platform Engineering",
+        "environment": "Production",
+        "monthlyCost": "3000",
+        "redundancy": "Single instance",
+        "position": {
+          "x": 0,
+          "y": 150
+        }
+      }
+    },
+    {
+      "id": "esxi-03",
+      "label": "esxi-host-03",
+      "domain": "Infrastructure / Compute",
+      "type": "Compute Node",
+      "metadata": {
+        "description": "ESXi hypervisor host 3.",
+        "owner": "Platform Engineering",
+        "environment": "Production",
+        "monthlyCost": "3000",
+        "redundancy": "Single instance",
+        "position": {
+          "x": 360,
+          "y": 150
+        }
+      }
+    },
+    {
+      "id": "vm-web",
+      "label": "cr-web-vm-01",
+      "domain": "Infrastructure / Runtime",
+      "type": "VM",
+      "metadata": {
+        "description": "Charles River web tier VM.",
+        "owner": "Trading Platform Team",
+        "environment": "Production",
+        "monthlyCost": "600",
+        "redundancy": "HA cluster",
+        "position": {
+          "x": -460,
+          "y": 320
+        }
+      }
+    },
+    {
+      "id": "vm-app",
+      "label": "cr-app-vm-01",
+      "domain": "Infrastructure / Runtime",
+      "type": "VM",
+      "metadata": {
+        "description": "Charles River app tier VM.",
+        "owner": "Trading Platform Team",
+        "environment": "Production",
+        "monthlyCost": "800",
+        "redundancy": "HA cluster",
+        "position": {
+          "x": -260,
+          "y": 320
+        }
+      }
+    },
+    {
+      "id": "vm-db",
+      "label": "cr-db-vm-01",
+      "domain": "Infrastructure / Runtime",
+      "type": "VM",
+      "metadata": {
+        "description": "Charles River database VM.",
+        "owner": "DBA Team",
+        "environment": "Production",
+        "monthlyCost": "1000",
+        "redundancy": "HA cluster",
+        "position": {
+          "x": 0,
+          "y": 320
+        }
+      }
+    },
+    {
+      "id": "vm-cache",
+      "label": "cr-cache-vm-01",
+      "domain": "Infrastructure / Runtime",
+      "type": "VM",
+      "metadata": {
+        "description": "Charles River cache VM.",
+        "owner": "Trading Platform Team",
+        "environment": "Production",
+        "monthlyCost": "400",
+        "redundancy": "HA cluster",
+        "position": {
+          "x": 360,
+          "y": 320
+        }
+      }
+    },
+    {
+      "id": "db",
+      "label": "cr-orders-db",
+      "domain": "Infrastructure / Data",
+      "type": "Database Instance",
+      "metadata": {
+        "description": "Orders database.",
+        "owner": "DBA Team",
+        "environment": "Production",
+        "monthlyCost": "1200",
+        "redundancy": "Redundant pair",
+        "dataClassification": "Confidential",
+        "position": {
+          "x": -657,
+          "y": 431
+        }
+      }
+    },
+    {
+      "id": "vol",
+      "label": "cr-orders-vol",
+      "domain": "Infrastructure / Storage",
+      "type": "Storage Volume",
+      "metadata": {
+        "description": "Orders DB storage.",
+        "owner": "Storage Team",
+        "environment": "Production",
+        "monthlyCost": "300",
+        "dataClassification": "Confidential",
+        "position": {
+          "x": -657,
+          "y": 593
+        }
+      }
+    },
+    {
+      "id": "tech-svc",
+      "label": "Charles River Platform Service",
+      "domain": "Service Delivery",
+      "type": "Technical Service",
+      "metadata": {
+        "description": "Technical service delivering the Charles River trading platform.",
+        "owner": "Trading Platform Team",
         "operationalStatus": "Operational",
         "position": {
-          "x": 271,
-          "y": 17
+          "x": 0,
+          "y": -290
         }
       }
     },
     {
-      "id": "kubeclus-1783994313756-0-656",
-      "label": "pgh-core-k8s-cluster (Stage)",
-      "type": "Kubernetes Cluster",
-      "domain": "Infrastructure / Compute",
+      "id": "tech-off",
+      "label": "Charles River – Prod Tier (99.9%)",
+      "domain": "Service Delivery",
+      "type": "Technical Service Offering",
       "metadata": {
-        "description": "pgh-core-k8s-cluster sample Kubernetes Cluster.",
-        "owner": "Example Owner",
-        "environment": "Stage",
+        "description": "Production tier of the Charles River technical service.",
+        "owner": "Trading Platform Team",
+        "availabilityTarget": "99.9%",
+        "supportGroup": "Trading Ops L2",
+        "approvalGroup": "Trading Change Board",
         "position": {
-          "x": 397,
-          "y": 236
+          "x": 0,
+          "y": -170
         }
       }
     },
     {
-      "id": "name-1783994313756-1-317",
-      "label": "trading-prod (Stage)",
-      "type": "Namespace",
-      "domain": "Infrastructure / Runtime",
+      "id": "app-comp",
+      "label": "cr-order-engine",
+      "domain": "Service Delivery",
+      "type": "Application",
       "metadata": {
-        "description": "trading-prod sample Namespace.",
-        "owner": "Example Owner",
-        "environment": "Stage",
+        "description": "Charles River order engine running application component.",
+        "owner": "Trading Platform Team",
+        "environment": "Production",
+        "version": "1.4.2",
+        "operationalStatus": "Operational",
         "position": {
-          "x": 704,
-          "y": 424
+          "x": -322,
+          "y": 20
         }
       }
     },
     {
-      "id": "compnode-1783994313756-2-118",
-      "label": "pgh-k8s-node-01 (Stage)",
-      "type": "Compute Node",
-      "domain": "Infrastructure / Compute",
-      "metadata": {
-        "description": "pgh-k8s-node-01 sample Compute Node.",
-        "owner": "Example Owner",
-        "environment": "Stage",
-        "position": {
-          "x": 953,
-          "y": 403
-        }
-      }
-    },
-    {
-      "id": "work-1783994313756-3-157",
-      "label": "order-router (Stage)",
-      "type": "Workload",
-      "domain": "Infrastructure / Runtime",
-      "metadata": {
-        "description": "order-router sample Workload.",
-        "owner": "Example Owner",
-        "environment": "Stage",
-        "position": {
-          "x": 844,
-          "y": 599
-        }
-      }
-    },
-    {
-      "id": "netwsegm-1783994313756-4-106",
-      "label": "prod-app-network (Stage)",
-      "type": "Network Segment",
-      "domain": "Infrastructure / Network",
-      "metadata": {
-        "description": "prod-app-network sample Network Segment.",
-        "owner": "Example Owner",
-        "environment": "Stage",
-        "position": {
-          "x": 1437,
-          "y": 622
-        }
-      }
-    },
-    {
-      "id": "pod-1783994313756-5-474",
-      "label": "order-router-pod-1 (Stage)",
-      "type": "Pod",
-      "domain": "Infrastructure / Runtime",
-      "metadata": {
-        "description": "order-router-pod-1 sample Pod.",
-        "owner": "Example Owner",
-        "environment": "Stage",
-        "position": {
-          "x": 1109,
-          "y": 588
-        }
-      }
-    },
-    {
-      "id": "datainst-1783994313756-6-157",
-      "label": "trading-orders-db (Stage)",
-      "type": "Database Instance",
-      "domain": "Infrastructure / Data",
-      "metadata": {
-        "description": "trading-orders-db sample Database Instance.",
-        "owner": "Example Owner",
-        "environment": "Stage",
-        "position": {
-          "x": 740,
-          "y": 790
-        }
-      }
-    },
-    {
-      "id": "secr-1783994313756-7-85",
-      "label": "orders-db-secret (Stage)",
-      "type": "Secret",
-      "domain": "Infrastructure / Security",
-      "metadata": {
-        "description": "orders-db-secret sample Secret.",
-        "owner": "Example Owner",
-        "environment": "Stage",
-        "position": {
-          "x": 1084,
-          "y": 800
-        }
-      }
-    },
-    {
-      "id": "subn-1783994313756-8-563",
-      "label": "trading-subnet-a (Stage)",
-      "type": "Subnet",
-      "domain": "Infrastructure / Network",
-      "metadata": {
-        "description": "trading-subnet-a sample Subnet.",
-        "owner": "Example Owner",
-        "environment": "Stage",
-        "position": {
-          "x": 1646,
-          "y": 818
-        }
-      }
-    },
-    {
-      "id": "cont-1783994313756-9-286",
-      "label": "order-router-container (Stage)",
-      "type": "Container",
-      "domain": "Infrastructure / Runtime",
-      "metadata": {
-        "description": "order-router-container sample Container.",
-        "owner": "Example Owner",
-        "environment": "Stage",
-        "position": {
-          "x": 1331,
-          "y": 792
-        }
-      }
-    },
-    {
-      "id": "storvolu-1783994313756-10-464",
-      "label": "orders-data-volume (Stage)",
-      "type": "Storage Volume",
-      "domain": "Infrastructure / Storage",
-      "metadata": {
-        "description": "orders-data-volume sample Storage Volume.",
-        "owner": "Example Owner",
-        "environment": "Stage",
-        "position": {
-          "x": 747,
-          "y": 938
-        }
-      }
-    },
-    {
-      "id": "contimag-1783994313756-11-874",
-      "label": "order-router:1.4.2 (Stage)",
-      "type": "Container Image",
-      "domain": "Infrastructure / Runtime",
-      "metadata": {
-        "description": "order-router:1.4.2 sample Container Image.",
-        "owner": "Example Owner",
-        "environment": "Stage",
-        "position": {
-          "x": 1347,
-          "y": 947
-        }
-      }
-    },
-    {
-      "id": "off-1783994792958-620",
-      "label": "Equity Stage",
-      "type": "Service Offering",
+      "id": "portfolio",
+      "label": "Trading Services Portfolio",
       "domain": "Service Consumption",
+      "type": "Service Portfolio",
       "metadata": {
-        "description": "Equity Stage",
-        "owner": "Example Owner",
-        "availabilityTarget": "98.5",
-        "supportHours": "Business Hours (8x5)",
+        "description": "Portfolio of trading business services and applications.",
+        "owner": "Head of Trading Technology",
+        "organizedBy": "Capability",
         "position": {
-          "x": 556,
-          "y": -151
+          "x": 560,
+          "y": -440
         }
       }
     },
     {
-      "id": "virtmach-1784257940590",
-      "label": "PWAPP001CRDT",
-      "type": "VM",
-      "domain": "Infrastructure / Runtime",
+      "id": "commit",
+      "label": "Gold Tier – 99.9% / 30-min response",
+      "domain": "Service Consumption",
+      "type": "Service Commitment",
       "metadata": {
-        "description": "PWAPP001CRDT",
+        "description": "Gold service commitment for the production offering.",
+        "owner": "Equity Service Owner",
+        "commitmentTier": "Gold",
+        "target": "99.9% availability, 30-min response 24x7",
+        "scope": "Equity trading desk",
         "position": {
-          "x": 71,
-          "y": 252
+          "x": 560,
+          "y": -80
+        }
+      }
+    },
+    {
+      "id": "catalog",
+      "label": "Trading Service Catalog",
+      "domain": "Service Consumption",
+      "type": "Service Catalog",
+      "metadata": {
+        "description": "Catalog of trading services consumers can request.",
+        "owner": "Service Desk",
+        "position": {
+          "x": 760,
+          "y": -320
+        }
+      }
+    },
+    {
+      "id": "catitem",
+      "label": "Request Equity Trading Access",
+      "domain": "Service Consumption",
+      "type": "Catalog Item",
+      "metadata": {
+        "description": "Requestable access to the Equity Trading production offering.",
+        "owner": "Service Desk",
+        "requestType": "Subscription",
+        "position": {
+          "x": 760,
+          "y": -170
+        }
+      }
+    },
+    {
+      "id": "subscr",
+      "label": "Equity Desk Users",
+      "domain": "Service Consumption",
+      "type": "Subscription",
+      "metadata": {
+        "description": "Subscription granting the equity desk access to the offering.",
+        "owner": "Equity Desk",
+        "userCount": "48",
+        "position": {
+          "x": 317,
+          "y": 14
         }
       }
     }
   ],
   "edges": [
     {
-      "from": "app-charles-river",
-      "to": "cap-trading",
-      "label": "Realizes"
+      "from": "app",
+      "to": "cap",
+      "label": "Provides"
     },
     {
-      "from": "app-charles-river",
-      "to": "svc-equity-trading",
+      "from": "app",
+      "to": "svc",
       "label": "Instantiates"
     },
     {
-      "from": "offering-equity-prod",
-      "to": "svc-equity-trading",
-      "label": "Depends on"
-    },
-    {
-      "from": "svc-equity-trading",
-      "to": "cluster-pgh-core",
-      "label": "Depends on"
-    },
-    {
-      "from": "cluster-pgh-core",
-      "to": "ns-trading-prod",
-      "label": "Contains"
-    },
-    {
-      "from": "cluster-pgh-core",
-      "to": "node-pgh-01",
-      "label": "Contains"
-    },
-    {
-      "from": "ns-trading-prod",
-      "to": "workload-order-router",
-      "label": "Contains"
-    },
-    {
-      "from": "workload-order-router",
-      "to": "pod-order-router-1",
-      "label": "Contains"
-    },
-    {
-      "from": "pod-order-router-1",
-      "to": "container-order-router",
-      "label": "Contains"
-    },
-    {
-      "from": "container-order-router",
-      "to": "image-order-router",
-      "label": "Uses"
-    },
-    {
-      "from": "workload-order-router",
-      "to": "node-pgh-01",
-      "label": "Runs on"
-    },
-    {
-      "from": "pod-order-router-1",
-      "to": "node-pgh-01",
-      "label": "Runs on"
-    },
-    {
-      "from": "workload-order-router",
-      "to": "db-orders",
-      "label": "Uses"
-    },
-    {
-      "from": "workload-order-router",
-      "to": "secret-db",
-      "label": "Uses"
-    },
-    {
-      "from": "db-orders",
-      "to": "volume-orders",
-      "label": "Uses"
-    },
-    {
-      "from": "lb-trading",
-      "to": "ingress-trading",
-      "label": "Routes to"
-    },
-    {
-      "from": "ingress-trading",
-      "to": "workload-order-router",
-      "label": "Routes to"
-    },
-    {
-      "from": "lb-trading",
-      "to": "cert-trading",
-      "label": "Uses"
-    },
-    {
-      "from": "kv-trading",
-      "to": "secret-db",
-      "label": "Contains"
-    },
-    {
-      "from": "kv-trading",
-      "to": "cert-trading",
-      "label": "Contains"
-    },
-    {
-      "from": "node-pgh-01",
-      "to": "netseg-prod",
-      "label": "Connects to"
-    },
-    {
-      "from": "netseg-prod",
-      "to": "subnet-trading",
-      "label": "Contains"
-    },
-    {
-      "from": "dns-trading",
-      "to": "lb-trading",
-      "label": "Points to"
-    },
-    {
-      "from": "bizsvc-equity-trading",
-      "to": "offering-equity-prod",
+      "from": "bsvc",
+      "to": "off",
       "label": "Offers"
     },
     {
-      "from": "applserv-1783994313756",
-      "to": "kubeclus-1783994313756-0-656",
+      "from": "app",
+      "to": "io-orders",
+      "label": "Uses"
+    },
+    {
+      "from": "io-orders",
+      "to": "db",
       "label": "Depends on"
     },
     {
-      "from": "kubeclus-1783994313756-0-656",
-      "to": "name-1783994313756-1-317",
+      "from": "svc",
+      "to": "vcluster",
+      "label": "Depends on"
+    },
+    {
+      "from": "vcluster",
+      "to": "esxi-01",
       "label": "Contains"
     },
     {
-      "from": "kubeclus-1783994313756-0-656",
-      "to": "compnode-1783994313756-2-118",
+      "from": "vcluster",
+      "to": "esxi-02",
       "label": "Contains"
     },
     {
-      "from": "name-1783994313756-1-317",
-      "to": "work-1783994313756-3-157",
+      "from": "vcluster",
+      "to": "esxi-03",
       "label": "Contains"
     },
     {
-      "from": "work-1783994313756-3-157",
-      "to": "pod-1783994313756-5-474",
+      "from": "vcluster",
+      "to": "vm-web",
       "label": "Contains"
     },
     {
-      "from": "pod-1783994313756-5-474",
-      "to": "cont-1783994313756-9-286",
+      "from": "vcluster",
+      "to": "vm-app",
       "label": "Contains"
     },
     {
-      "from": "cont-1783994313756-9-286",
-      "to": "contimag-1783994313756-11-874",
-      "label": "Uses"
+      "from": "vcluster",
+      "to": "vm-db",
+      "label": "Contains"
     },
     {
-      "from": "work-1783994313756-3-157",
-      "to": "compnode-1783994313756-2-118",
+      "from": "vcluster",
+      "to": "vm-cache",
+      "label": "Contains"
+    },
+    {
+      "from": "vm-web",
+      "to": "esxi-01",
       "label": "Runs on"
     },
     {
-      "from": "pod-1783994313756-5-474",
-      "to": "compnode-1783994313756-2-118",
+      "from": "vm-app",
+      "to": "esxi-01",
       "label": "Runs on"
     },
     {
-      "from": "work-1783994313756-3-157",
-      "to": "datainst-1783994313756-6-157",
+      "from": "vm-db",
+      "to": "esxi-02",
+      "label": "Runs on"
+    },
+    {
+      "from": "vm-cache",
+      "to": "esxi-03",
+      "label": "Runs on"
+    },
+    {
+      "from": "db",
+      "to": "vol",
       "label": "Uses"
     },
     {
-      "from": "work-1783994313756-3-157",
-      "to": "secr-1783994313756-7-85",
-      "label": "Uses"
+      "from": "off",
+      "to": "tech-off",
+      "label": "Depends on"
     },
     {
-      "from": "datainst-1783994313756-6-157",
-      "to": "storvolu-1783994313756-10-464",
-      "label": "Uses"
-    },
-    {
-      "from": "compnode-1783994313756-2-118",
-      "to": "netwsegm-1783994313756-4-106",
-      "label": "Connects to"
-    },
-    {
-      "from": "netwsegm-1783994313756-4-106",
-      "to": "subn-1783994313756-8-563",
-      "label": "Contains"
-    },
-    {
-      "from": "app-charles-river",
-      "to": "applserv-1783994313756",
-      "label": "Instantiates"
-    },
-    {
-      "from": "app-charles-river",
-      "to": "cap-trading",
-      "label": "Realizes"
-    },
-    {
-      "from": "app-charles-river",
-      "to": "applserv-1783994313756",
-      "label": "Instantiates"
-    },
-    {
-      "from": "bizsvc-equity-trading",
-      "to": "off-1783994792958-620",
+      "from": "tech-svc",
+      "to": "tech-off",
       "label": "Offers"
     },
     {
-      "from": "off-1783994792958-620",
-      "to": "applserv-1783994313756",
+      "from": "tech-off",
+      "to": "svc",
       "label": "Depends on"
     },
     {
-      "from": "svc-equity-trading",
-      "to": "virtmach-1784257940590",
+      "from": "svc",
+      "to": "app-comp",
+      "label": "Depends on"
+    },
+    {
+      "from": "app-comp",
+      "to": "vm-web",
+      "label": "Runs on"
+    },
+    {
+      "from": "app-comp",
+      "to": "vm-app",
+      "label": "Runs on"
+    },
+    {
+      "from": "app-comp",
+      "to": "db",
+      "label": "Uses"
+    },
+    {
+      "from": "tech-svc",
+      "to": "svc",
+      "label": "Depends on"
+    },
+    {
+      "from": "bsvc",
+      "to": "cap",
+      "label": "Provides"
+    },
+    {
+      "from": "off",
+      "to": "commit",
+      "label": "Contains"
+    },
+    {
+      "from": "portfolio",
+      "to": "bsvc",
+      "label": "Contains"
+    },
+    {
+      "from": "portfolio",
+      "to": "app",
+      "label": "Contains"
+    },
+    {
+      "from": "catalog",
+      "to": "catitem",
+      "label": "Contains"
+    },
+    {
+      "from": "catitem",
+      "to": "off",
+      "label": "Depends on"
+    },
+    {
+      "from": "subscr",
+      "to": "off",
+      "label": "Depends on"
+    },
+    {
+      "from": "db",
+      "to": "vm-web",
       "label": "Runs on"
     }
   ]
