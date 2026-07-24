@@ -14,8 +14,8 @@
         "revenueAmount": "1000000",
         "revenuePeriod": "per hour",
         "position": {
-          "x": 0,
-          "y": -460
+          "x": -321,
+          "y": -456
         }
       }
     },
@@ -128,8 +128,8 @@
         "monthlyCost": "3000",
         "redundancy": "Single instance",
         "position": {
-          "x": -360,
-          "y": 150
+          "x": -85,
+          "y": 182
         }
       }
     },
@@ -145,8 +145,8 @@
         "monthlyCost": "3000",
         "redundancy": "Single instance",
         "position": {
-          "x": 0,
-          "y": 150
+          "x": 78,
+          "y": 180
         }
       }
     },
@@ -162,8 +162,8 @@
         "monthlyCost": "3000",
         "redundancy": "Single instance",
         "position": {
-          "x": 360,
-          "y": 150
+          "x": 354,
+          "y": 174
         }
       }
     },
@@ -179,8 +179,8 @@
         "monthlyCost": "600",
         "redundancy": "HA cluster",
         "position": {
-          "x": -460,
-          "y": 320
+          "x": -503,
+          "y": 316
         }
       }
     },
@@ -196,8 +196,8 @@
         "monthlyCost": "800",
         "redundancy": "HA cluster",
         "position": {
-          "x": -260,
-          "y": 320
+          "x": -304,
+          "y": 314
         }
       }
     },
@@ -314,8 +314,8 @@
         "version": "1.4.2",
         "operationalStatus": "Operational",
         "position": {
-          "x": -322,
-          "y": 20
+          "x": -421,
+          "y": -46
         }
       }
     },
@@ -329,8 +329,8 @@
         "owner": "Head of Trading Technology",
         "organizedBy": "Capability",
         "position": {
-          "x": 560,
-          "y": -440
+          "x": 321,
+          "y": -461
         }
       }
     },
@@ -392,6 +392,388 @@
         "position": {
           "x": 317,
           "y": 14
+        }
+      }
+    },
+    {
+      "id": "phost-01",
+      "label": "srv-blade-01",
+      "domain": "Infrastructure / Physical",
+      "type": "Physical Host",
+      "metadata": {
+        "environment": "Production",
+        "position": {
+          "x": -351,
+          "y": 577
+        },
+        "description": "Bare-metal server hosting ESXi host 1 (web/app tier).",
+        "owner": "Data Center Ops",
+        "monthlyCost": "2500",
+        "redundancy": "Single instance",
+        "model": "Dell PowerEdge R760",
+        "rackUnit": "U10-U11",
+        "psuRedundancy": "Dual PSU"
+      }
+    },
+    {
+      "id": "phost-02",
+      "label": "srv-blade-02",
+      "domain": "Infrastructure / Physical",
+      "type": "Physical Host",
+      "metadata": {
+        "environment": "Production",
+        "position": {
+          "x": 9,
+          "y": 577
+        },
+        "description": "Bare-metal server hosting ESXi host 2 (database tier).",
+        "owner": "Data Center Ops",
+        "monthlyCost": "2500",
+        "redundancy": "Single instance",
+        "model": "Dell PowerEdge R760",
+        "rackUnit": "U12-U13",
+        "psuRedundancy": "Dual PSU"
+      }
+    },
+    {
+      "id": "phost-03",
+      "label": "srv-blade-03",
+      "domain": "Infrastructure / Physical",
+      "type": "Physical Host",
+      "metadata": {
+        "environment": "Production",
+        "position": {
+          "x": 369,
+          "y": 577
+        },
+        "description": "Bare-metal server hosting ESXi host 3 (cache tier).",
+        "owner": "Data Center Ops",
+        "monthlyCost": "2500",
+        "redundancy": "Single instance",
+        "model": "Dell PowerEdge R760",
+        "rackUnit": "U10-U11",
+        "psuRedundancy": "Dual PSU"
+      }
+    },
+    {
+      "id": "rack-a1",
+      "label": "Rack A1",
+      "domain": "Infrastructure / Physical",
+      "type": "Rack",
+      "metadata": {
+        "environment": "Production",
+        "position": {
+          "x": -351,
+          "y": 707
+        },
+        "description": "Rack A1 in the East data hall. Shares power and top-of-rack switching.",
+        "owner": "Data Center Ops",
+        "monthlyCost": "500",
+        "redundancy": "Single instance",
+        "row": "Row A",
+        "uCapacity": "42U",
+        "powerDraw": "6.5 kW"
+      }
+    },
+    {
+      "id": "rack-a2",
+      "label": "Rack A2",
+      "domain": "Infrastructure / Physical",
+      "type": "Rack",
+      "metadata": {
+        "environment": "Production",
+        "position": {
+          "x": 9,
+          "y": 707
+        },
+        "description": "Rack A2 in the East data hall. Shares power and top-of-rack switching.",
+        "owner": "Data Center Ops",
+        "monthlyCost": "500",
+        "redundancy": "Single instance",
+        "row": "Row A",
+        "uCapacity": "42U",
+        "powerDraw": "5.8 kW"
+      }
+    },
+    {
+      "id": "rack-b1",
+      "label": "Rack B1",
+      "domain": "Infrastructure / Physical",
+      "type": "Rack",
+      "metadata": {
+        "environment": "Production",
+        "position": {
+          "x": 369,
+          "y": 707
+        },
+        "description": "Rack B1 in the West data hall. Shares power and top-of-rack switching.",
+        "owner": "Data Center Ops",
+        "monthlyCost": "500",
+        "redundancy": "Single instance",
+        "row": "Row B",
+        "uCapacity": "42U",
+        "powerDraw": "3.2 kW"
+      }
+    },
+    {
+      "id": "dc-east",
+      "label": "SDDC-East",
+      "domain": "Infrastructure / Physical",
+      "type": "Data Center",
+      "metadata": {
+        "environment": "Production",
+        "position": {
+          "x": -171,
+          "y": 837
+        },
+        "description": "East software-defined data center realizing availability zone us-east-1a.",
+        "owner": "Cloud Platform",
+        "monthlyCost": "8000",
+        "redundancy": "Single instance",
+        "location": "Ashburn, VA",
+        "tier": "Tier III",
+        "powerFeed": "Dual feed (A+B)"
+      }
+    },
+    {
+      "id": "dc-west",
+      "label": "SDDC-West",
+      "domain": "Infrastructure / Physical",
+      "type": "Data Center",
+      "metadata": {
+        "environment": "Production",
+        "position": {
+          "x": 369,
+          "y": 837
+        },
+        "description": "West software-defined data center realizing availability zone us-east-1b.",
+        "owner": "Cloud Platform",
+        "monthlyCost": "8000",
+        "redundancy": "Single instance",
+        "location": "Manassas, VA",
+        "tier": "Tier III",
+        "powerFeed": "Dual feed (A+B)"
+      }
+    },
+    {
+      "id": "az-1",
+      "label": "us-east-1a",
+      "domain": "Infrastructure / Cloud",
+      "type": "Availability Zone",
+      "metadata": {
+        "environment": "Production",
+        "position": {
+          "x": -171,
+          "y": 967
+        },
+        "description": "Availability zone A. Isolated failure domain hosting the web/app and database tiers.",
+        "owner": "Cloud Platform",
+        "monthlyCost": "0",
+        "redundancy": "Single instance",
+        "provider": "AWS",
+        "zoneId": "use1-az1"
+      }
+    },
+    {
+      "id": "az-2",
+      "label": "us-east-1b",
+      "domain": "Infrastructure / Cloud",
+      "type": "Availability Zone",
+      "metadata": {
+        "environment": "Production",
+        "position": {
+          "x": 369,
+          "y": 967
+        },
+        "description": "Availability zone B. Isolated failure domain hosting the cache tier.",
+        "owner": "Cloud Platform",
+        "monthlyCost": "0",
+        "redundancy": "Single instance",
+        "provider": "AWS",
+        "zoneId": "use1-az2"
+      }
+    },
+    {
+      "id": "region-1",
+      "label": "aws-us-east-1",
+      "domain": "Infrastructure / Cloud",
+      "type": "Cloud Region",
+      "metadata": {
+        "environment": "Production",
+        "position": {
+          "x": 81,
+          "y": 1085
+        },
+        "description": "Single cloud region. Everything runs here — a region-wide event is the only total outage.",
+        "owner": "Cloud Platform",
+        "monthlyCost": "0",
+        "redundancy": "Single instance",
+        "provider": "AWS",
+        "regionCode": "us-east-1"
+      }
+    },
+    {
+      "id": "fac-east",
+      "label": "SDDC-East Power & Cooling",
+      "domain": "Service Delivery",
+      "type": "Facility Service Instance",
+      "metadata": {
+        "description": "Facility service delivering power and cooling to the SDDC-East data center. A CSDM 5 Facility Service Instance — the physical plant modeled as a first-class service that the hosts, racks and everything above them depend on. Single, non-redundant: lose it and the whole east data center goes dark.",
+        "owner": "Data Center Operations",
+        "environment": "Production",
+        "operationalStatus": "Operational",
+        "redundancy": "Single instance",
+        "monthlyCost": "42000",
+        "populationMethod": "Manual",
+        "position": {
+          "x": -598,
+          "y": 981
+        }
+      }
+    },
+    {
+      "id": "fac-east-power",
+      "label": "SDDC-East Power",
+      "domain": "Service Delivery",
+      "type": "Facility Service Instance",
+      "metadata": {
+        "description": "Power service for SDDC-East. Fed by dual UPS plus a backup generator, so the loss of any single power component is tolerated.",
+        "owner": "Data Center Operations",
+        "environment": "Production",
+        "operationalStatus": "Operational",
+        "redundancy": "Redundant pair",
+        "monthlyCost": "9000",
+        "populationMethod": "Manual",
+        "position": {
+          "x": -800,
+          "y": 837
+        }
+      }
+    },
+    {
+      "id": "fac-east-cooling",
+      "label": "SDDC-East Cooling",
+      "domain": "Service Delivery",
+      "type": "Facility Service Instance",
+      "metadata": {
+        "description": "Cooling service for SDDC-East. A single CRAC loop off a single chiller — no redundancy, so any cooling failure takes the whole data hall down.",
+        "owner": "Data Center Operations",
+        "environment": "Production",
+        "operationalStatus": "Operational",
+        "redundancy": "Single instance",
+        "monthlyCost": "8000",
+        "populationMethod": "Manual",
+        "position": {
+          "x": -520,
+          "y": 837
+        }
+      }
+    },
+    {
+      "id": "ups-a",
+      "label": "UPS-A",
+      "domain": "Infrastructure / Facility",
+      "type": "UPS",
+      "metadata": {
+        "description": "A-side battery UPS, half of the redundant pair.",
+        "owner": "Data Center Operations",
+        "environment": "Production",
+        "operationalStatus": "Operational",
+        "redundancy": "Redundant pair",
+        "monthlyCost": "1200",
+        "position": {
+          "x": -946,
+          "y": 1037
+        }
+      }
+    },
+    {
+      "id": "ups-b",
+      "label": "UPS-B",
+      "domain": "Infrastructure / Facility",
+      "type": "UPS",
+      "metadata": {
+        "description": "B-side battery UPS, half of the redundant pair.",
+        "owner": "Data Center Operations",
+        "environment": "Production",
+        "operationalStatus": "Operational",
+        "redundancy": "Redundant pair",
+        "monthlyCost": "1200",
+        "position": {
+          "x": -849,
+          "y": 1044
+        }
+      }
+    },
+    {
+      "id": "pdu-1",
+      "label": "PDU-1",
+      "domain": "Infrastructure / Facility",
+      "type": "PDU",
+      "metadata": {
+        "description": "Power distribution unit feeding the east racks.",
+        "owner": "Data Center Operations",
+        "environment": "Production",
+        "operationalStatus": "Operational",
+        "redundancy": "Single instance",
+        "monthlyCost": "400",
+        "position": {
+          "x": -760,
+          "y": 1073
+        }
+      }
+    },
+    {
+      "id": "gen-1",
+      "label": "Generator-1",
+      "domain": "Infrastructure / Facility",
+      "type": "Generator",
+      "metadata": {
+        "description": "Diesel backup generator for utility outages.",
+        "owner": "Data Center Operations",
+        "environment": "Production",
+        "operationalStatus": "Operational",
+        "redundancy": "Single instance",
+        "monthlyCost": "2500",
+        "position": {
+          "x": -656,
+          "y": 1075
+        }
+      }
+    },
+    {
+      "id": "crac-1",
+      "label": "CRAC-1",
+      "domain": "Infrastructure / Facility",
+      "type": "CRAC Unit",
+      "metadata": {
+        "description": "Sole air handler for the east data hall.",
+        "owner": "Data Center Operations",
+        "environment": "Production",
+        "operationalStatus": "Operational",
+        "redundancy": "Single instance",
+        "monthlyCost": "900",
+        "position": {
+          "x": -478,
+          "y": 1071
+        }
+      }
+    },
+    {
+      "id": "chiller-1",
+      "label": "Chiller-1",
+      "domain": "Infrastructure / Facility",
+      "type": "Chiller",
+      "metadata": {
+        "description": "Sole chiller supplying the CRAC loop — the cooling single point of failure.",
+        "owner": "Data Center Operations",
+        "environment": "Production",
+        "operationalStatus": "Operational",
+        "redundancy": "Single instance",
+        "monthlyCost": "3000",
+        "position": {
+          "x": -326,
+          "y": 1064
         }
       }
     }
@@ -566,6 +948,126 @@
       "from": "db",
       "to": "vm-web",
       "label": "Runs on"
+    },
+    {
+      "from": "esxi-01",
+      "to": "phost-01",
+      "label": "Runs on"
+    },
+    {
+      "from": "esxi-02",
+      "to": "phost-02",
+      "label": "Runs on"
+    },
+    {
+      "from": "esxi-03",
+      "to": "phost-03",
+      "label": "Runs on"
+    },
+    {
+      "from": "rack-a1",
+      "to": "phost-01",
+      "label": "Contains"
+    },
+    {
+      "from": "rack-a2",
+      "to": "phost-02",
+      "label": "Contains"
+    },
+    {
+      "from": "rack-b1",
+      "to": "phost-03",
+      "label": "Contains"
+    },
+    {
+      "from": "dc-east",
+      "to": "rack-a1",
+      "label": "Contains"
+    },
+    {
+      "from": "dc-east",
+      "to": "rack-a2",
+      "label": "Contains"
+    },
+    {
+      "from": "dc-west",
+      "to": "rack-b1",
+      "label": "Contains"
+    },
+    {
+      "from": "az-1",
+      "to": "dc-east",
+      "label": "Contains"
+    },
+    {
+      "from": "az-2",
+      "to": "dc-west",
+      "label": "Contains"
+    },
+    {
+      "from": "region-1",
+      "to": "az-1",
+      "label": "Contains"
+    },
+    {
+      "from": "region-1",
+      "to": "az-2",
+      "label": "Contains"
+    },
+    {
+      "from": "phost-01",
+      "to": "fac-east",
+      "label": "Depends on"
+    },
+    {
+      "from": "phost-02",
+      "to": "fac-east",
+      "label": "Depends on"
+    },
+    {
+      "from": "dc-east",
+      "to": "fac-east",
+      "label": "Depends on"
+    },
+    {
+      "from": "fac-east",
+      "to": "fac-east-power",
+      "label": "Depends on"
+    },
+    {
+      "from": "fac-east",
+      "to": "fac-east-cooling",
+      "label": "Depends on"
+    },
+    {
+      "from": "fac-east-power",
+      "to": "ups-a",
+      "label": "Depends on"
+    },
+    {
+      "from": "fac-east-power",
+      "to": "ups-b",
+      "label": "Depends on"
+    },
+    {
+      "from": "fac-east-power",
+      "to": "pdu-1",
+      "label": "Depends on"
+    },
+    {
+      "from": "fac-east-power",
+      "to": "gen-1",
+      "label": "Depends on"
+    },
+    {
+      "from": "fac-east-cooling",
+      "to": "crac-1",
+      "label": "Depends on"
+    },
+    {
+      "from": "fac-east-cooling",
+      "to": "chiller-1",
+      "label": "Depends on"
     }
   ]
 }
