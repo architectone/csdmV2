@@ -419,6 +419,25 @@
           "y": -40
         }
       }
+    },
+    {
+      "id": "net-market-data",
+      "label": "Market Data Network",
+      "domain": "Service Delivery",
+      "type": "Network Service Instance",
+      "metadata": {
+        "description": "Shared market-data network service (multicast feed + trading VLAN) that BOTH the Equity and FX trading application services ride on. A CSDM 5 Network Service Instance — the network itself modeled as a first-class shared service. Single, non-redundant instance: fail it and both revenue lines go dark at once.",
+        "owner": "Network Engineering",
+        "environment": "Production",
+        "operationalStatus": "Operational",
+        "redundancy": "Single instance",
+        "monthlyCost": "18000",
+        "populationMethod": "Service Mapping (top-down discovery)",
+        "position": {
+          "x": 0,
+          "y": -110
+        }
+      }
     }
   ],
   "edges": [
@@ -581,6 +600,21 @@
       "from": "ingress-fx",
       "to": "wl-fx",
       "label": "Routes to"
+    },
+    {
+      "from": "svc-eq",
+      "to": "net-market-data",
+      "label": "Depends on"
+    },
+    {
+      "from": "svc-fx",
+      "to": "net-market-data",
+      "label": "Depends on"
+    },
+    {
+      "from": "net-market-data",
+      "to": "lb",
+      "label": "Runs on"
     }
   ]
 }
