@@ -129,12 +129,47 @@
   /* Longest pattern source first, so `kubernetes cluster` beats `cluster`. */
   flat.sort((a, b) => b.pattern.source.length - a.pattern.source.length);
 
+  /* ---------- fragmenting prose ---------- */
+  /* Nobody answers in a tidy list. `the application has two app servers that connect to a
+     database that is hosted on a VM` is ONE sentence naming THREE things; splitting only on
+     commas and `and` collapsed the whole sentence into a single node. So we also split on the
+     connectives that mean "…and now a different thing": possession, relative clauses, hosting
+     verbs, and prepositions. Verbs that double as infrastructure nouns (`host`, `hosts`) are
+     deliberately absent — splitting on those would eat the noun the user just named. */
+  const VERB = `(?:hosted|hosting|running|runs|sitting|sits|living|lives|deployed|installed|located|stored|served|serving|backed|fronted|fronting|attached|mounted|provisioned|managed|connects|connected|connecting|connect|talks|talking|talk|depends|depending|depend|uses|using|requires|require|needs)`;
+  const PREP = `(?:on|onto|to|in|into|inside|within|at|by|from|with|behind|under|across|via|through|over)`;
+  const BARE = `(?:on|onto|in|inside|within|behind|underneath|under|via|through|with|across)`;
+  const HAS = `(?:has|have|had|contains|contain|includes|include|comprises|comprise|consists\\s+of|consist\\s+of|is\\s+made\\s+up\\s+of|made\\s+up\\s+of)`;
+  const SPLIT = new RegExp([
+    `[,;\\n+]`,
+    `\\s+&\\s+`,
+    `\\s+(?:and|plus|also|then)\\s+`,
+    `\\s+${HAS}\\s+`,
+    `\\s+(?:that|which|who)\\s+(?:is|are|was|were)?\\s*${VERB}(?:\\s+${PREP})?\\s+`,
+    `\\s+(?:is|are|was|were)\\s+${VERB}(?:\\s+${PREP})?\\s+`,
+    `\\s+${VERB}(?:\\s+${PREP})?\\s+`,
+    `\\s+(?:in\\s+front\\s+of|on\\s+top\\s+of|part\\s+of|backed\\s+up\\s+by)\\s+`,
+    `\\s+${BARE}\\s+`,
+    `\\s*/(?![^\\s]*\\d)`
+  ].join('|'), 'gi');
+  /* A fragment that only says "the thing we are describing" is the subject of the sentence,
+     not a dependency of it — the anchor is already an Application Service. */
+  const SELF = /^(?:the|our|my|this|that|a|an|its|their|it|we|they|there|apps?|applications?|services?|systems?|platforms?|stacks?|solutions?|setups?|things?|everything|all|also|too)$/i;
+  /* Words that carry no naming information, used to decide whether a fragment named something
+     of its own ("Rack A1") or only used the generic class word ("a load balancer"). */
+  const STOP = /^(?:a|an|the|our|my|its|their|this|that|some|of|for|with|in|on|at|is|are|and|to|s|two|2|three|3|four|4|five|5|six|6|several|many|multiple|couple|pair|redundant|clustered|paired|new|old|main|primary)$/i;
+
   /* Quantifiers are captured before stripping: "two VMs" is one CI with a redundancy of
      `Redundant pair`, not two nodes. Recording quantity as redundancy is what lets the
      cascade absorb one of them failing. */
   const QUANTIFIER = /^(two|2|three|3|four|4|several|many|multiple|a (?:couple|pair) of|redundant|clustered|paired)\b/i;
+  const QUANT_BEFORE = /(?:^|\s)(two|2|three|3|four|4|five|5|six|6|several|many|multiple|a\s+couple\s+of|a\s+pair\s+of|couple\s+of|pair\s+of|redundant|clustered|paired)\s*$/i;
   const ARTICLES = /^(a|an|the|our|some|its|his|her|their|two|3|three|4|four|several|many|multiple|couple of|pair of|redundant|clustered|paired)\s+/i;
-  function countOf(t) { const m = String(t || '').trim().match(QUANTIFIER); if (!m) return 1; const w = m[1].toLowerCase(); return /^(two|2|a couple of|a pair of|paired|redundant)$/.test(w) ? 2 : 3; }
+  function rank(w) { return /^(two|2|a couple of|a pair of|couple of|pair of|paired|redundant)$/.test(w) ? 2 : 3; }
+  function countOf(t) { const m = String(t || '').trim().match(QUANTIFIER); if (!m) return 1; return rank(m[1].toLowerCase()); }
+  /* The quantifier sits just before the noun, not at the start of the sentence — "the app has
+     two app servers" must still count 2. */
+  function countBefore(prefix) { const m = String(prefix || '').match(QUANT_BEFORE); return m ? rank(m[1].toLowerCase().replace(/\s+/g, ' ')) : 1; }
   function strip(t) { let s = String(t || '').trim(); let prev; do { prev = s; s = s.replace(ARTICLES, ''); } while (s !== prev); return s.trim(); }
 
   /* If the fragment is just the generic word ("a load balancer"), label it with the class name.
@@ -146,27 +181,84 @@
     return s;
   }
 
-  /* Class match runs FIRST: a specific word disambiguates an otherwise-trapped one
-     ("vsphere cluster" is a Virtualization Cluster, not an ambiguous "cluster").
-     Traps fire only when the ambiguous word is the sole signal. */
-  function match(term) {
-    const t = String(term || '').trim();
-    if (!t) return null;
-    const count = countOf(t);
-    for (const e of flat) {
-      const m = t.match(e.pattern);
-      if (m) return { kind: 'class', type: e.type, why: e.why, group: e.group, term: t, phrase: m[0], label: labelFor(t, m[0], e.type), count };
-    }
-    for (const tr of traps) if (tr.pattern.test(t)) return { kind: 'trap', trap: tr, term: t, label: strip(t), count };
-    return { kind: 'unknown', term: t, label: strip(t), count };
-  }
-
   function split(text) {
-    return String(text || '')
-      .split(/[,;\n]|\band\b|\+|\/(?![^\s]*\d)/i)
-      .map(s => s.replace(/^[\s\-•*]+|[\s.]+$/g, '').trim())
-      .filter(Boolean);
+    return (' ' + String(text || '').replace(/\s+/g, ' ').trim() + ' ')
+      .split(SPLIT)
+      .map(s => String(s || '').replace(/^[\s\-•*]+|[\s.]+$/g, '').trim())
+      .filter(s => s && !s.split(/[\s\-]+/).every(w => !w || SELF.test(w)));
   }
 
-  root.CSDM_LEXICON = { traps, groups, flat, match, split, strip, labelFor };
+  /* ---------- resolving one fragment ---------- */
+  /* Every pattern is scanned across the whole fragment, not just the first hit, so a fragment
+     the splitter failed to break still yields every thing named in it. */
+  function rawMatches(frag) {
+    const out = [];
+    function push(pattern, extra) {
+      const re = new RegExp(pattern.source, 'gi');
+      let m;
+      while ((m = re.exec(frag)) !== null) {
+        if (m[0]) out.push(Object.assign({ start: m.index, end: m.index + m[0].length, phrase: m[0] }, extra));
+        if (re.lastIndex === m.index) re.lastIndex++;
+      }
+    }
+    flat.forEach(e => push(e.pattern, { kind: 'class', entry: e }));
+    traps.forEach(tr => push(tr.pattern, { kind: 'trap', trap: tr }));
+    /* Longest span wins, so `container image` beats the `image` and `container` inside it. */
+    out.sort((a, b) => (b.end - b.start) - (a.end - a.start) || a.start - b.start);
+    const kept = [];
+    out.forEach(m => { if (!kept.some(k => m.start < k.end && k.start < m.end)) kept.push(m); });
+    return kept.sort((a, b) => a.start - b.start);
+  }
+
+  /* Touching matches are one compound noun — `app server`, `vsphere cluster`, `kubernetes
+     cluster` name a single thing, not two. */
+  function chunk(frag, ms) {
+    const out = [];
+    ms.forEach(m => {
+      const g = out[out.length - 1];
+      if (g && /^[\s\-]*$/.test(frag.slice(g.end, m.start))) { g.end = m.end; g.parts.push(m); }
+      else out.push({ start: m.start, end: m.end, parts: [m] });
+    });
+    return out;
+  }
+
+  /* Inside a compound noun a class beats a trap — `vsphere cluster` is a Virtualization
+     Cluster, not an ambiguous "cluster". With no class, the head noun (rightmost) wins:
+     in `app servers` the "app" is a modifier and "servers" is the thing. */
+  function winner(g) {
+    const cls = g.parts.filter(p => p.kind === 'class');
+    if (cls.length) return cls.slice().sort((a, b) => (b.end - b.start) - (a.end - a.start))[0];
+    return g.parts[g.parts.length - 1];
+  }
+
+  /* True when the fragment used only lexicon words — nothing left over to name a node with. */
+  function isGeneric(frag, ms) {
+    let rest = '', last = 0;
+    ms.forEach(m => { rest += frag.slice(last, m.start) + ' '; last = m.end; });
+    rest += frag.slice(last);
+    return !rest.split(/[\s\-]+/).some(w => { const c = w.replace(/[^a-z0-9-]/gi, ''); return c && !STOP.test(c); });
+  }
+
+  /* One pass over free text -> an ordered list of findings, one per thing named. */
+  function scan(text) {
+    const out = [];
+    split(text).forEach(frag => {
+      const ms = rawMatches(frag);
+      if (!ms.length) { out.push({ kind: 'unknown', term: frag, phrase: '', label: strip(frag), generic: false, count: countOf(frag) }); return; }
+      const gs = chunk(frag, ms), generic = isGeneric(frag, ms), single = gs.length === 1;
+      gs.forEach(g => {
+        const w = winner(g), phrase = frag.slice(g.start, g.end);
+        const label = generic ? '' : strip(single ? frag : phrase);
+        const count = countBefore(frag.slice(0, g.start));
+        if (w.kind === 'class') out.push({ kind: 'class', type: w.entry.type, why: w.entry.why, group: w.entry.group, term: frag, phrase, label: label || w.entry.type, generic, count });
+        else out.push({ kind: 'trap', trap: w.trap, term: frag, phrase, label, generic, count });
+      });
+    });
+    return out;
+  }
+
+  /* Kept for callers that hand in a single already-split term. */
+  function match(term) { const r = scan(term); return r.length ? r[0] : null; }
+
+  root.CSDM_LEXICON = { traps, groups, flat, scan, match, split, strip, labelFor, countOf };
 })(typeof self !== 'undefined' ? self : this);

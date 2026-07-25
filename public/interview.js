@@ -51,23 +51,126 @@
   }
 
   /* ---------- infrastructure term resolution ---------- */
+  /* One free-text answer names several things — `scan` returns one finding per thing, so a
+     whole sentence resolves rather than collapsing onto whichever class matched first. */
   function parseInfra(text) {
-    return lex().split(text).map(term => {
-      const m = lex().match(term);
-      if (!m) return null;
-      if (m.kind === 'class') return { term, label: m.label, type: m.type, why: m.why, phrase: m.phrase, count: m.count };
-      if (m.kind === 'trap') return { term, label: m.label, type: '', why: m.trap.why, trapKey: m.trap.key, ask: m.trap.ask, options: m.trap.options, count: m.count };
-      return { term, label: m.label, type: '', why: `I did not recognise this word, so you tell me what it is.`, unknown: true, count: m.count };
-    }).filter(Boolean);
+    const self = [S.answers.anchor, S.answers.ownership].filter(Boolean).map(norm);
+    const out = lex().scan(text).map(m => {
+      if (m.kind === 'class') return { term: m.term, label: m.label, type: m.type, why: m.why, phrase: m.phrase, generic: m.generic, count: m.count };
+      if (m.kind === 'trap') return { term: m.term, label: m.label, type: '', why: m.trap.why, trapKey: m.trap.key, ask: m.trap.ask, options: m.trap.options, phrase: m.phrase, generic: m.generic, count: m.count };
+      return { term: m.term, label: m.label, type: '', why: `I did not recognise this word, so you tell me what it is.`, unknown: true, generic: false, count: m.count };
+    /* The service being described is not a dependency of itself. */
+    }).filter(t => !self.includes(norm(t.label)) && !self.includes(norm(t.term)));
+    return out.slice(0, 40);
+  }
+  /* Two fragments can land on the same class with the same generic label — "two app servers"
+     and "a VM" both become VM. Merging them would lose a machine the user described; keeping
+     both would put two identically-named nodes on the canvas. So the second one falls back to
+     the user's own words instead. */
+  function normalizeInfra() {
+    const seen = new Map(), key = t => `${t.type || t.trapKey || 'u'}|${norm(t.label)}`;
+    const free = (t, l) => l && !seen.has(`${t.type || t.trapKey || 'u'}|${norm(l)}`);
+    (S.answers.infra || []).forEach(t => {
+      if (t.skip) return;
+      const prev = seen.get(key(t));
+      if (!prev) { seen.set(key(t), t); return; }
+      /* The same words twice is one thing said twice — keep the larger count. */
+      if (norm(prev.term) === norm(t.term)) { prev.count = Math.max(prev.count || 1, t.count || 1); t.skip = true; return; }
+      const mine = lex().strip(t.term), theirs = lex().strip(prev.term);
+      if (free(t, mine) && norm(mine) !== norm(t.label)) { t.label = mine; t.generic = false; seen.set(key(t), t); return; }
+      /* "two app servers" and "a VM" both resolve to VM, and it is the earlier one that has
+         the distinctive words — so rename that one rather than dropping this one. */
+      if (free(prev, theirs) && norm(theirs) !== norm(prev.label)) { seen.delete(key(prev)); prev.label = theirs; prev.generic = false; seen.set(key(prev), prev); seen.set(key(t), t); return; }
+      for (let i = 2; i < 20; i++) { const l = `${t.label} ${i}`; if (free(t, l)) { t.label = l; seen.set(key(t), t); return; } }
+      t.skip = true;
+    });
   }
   function pendingInfra() { return (S.answers.infra || []).filter(t => !t.type && !t.skip); }
   /* "two VMs" pre-selects `Redundant pair` — quantity belongs in the redundancy field. */
   function seedRedundancy() {
     const r = S.answers.redundancy = S.answers.redundancy || {};
     (S.answers.infra || []).forEach(t => {
-      if (!t.type || t.skip || (t.count || 1) < 2 || !canRedundancy(t.type)) return;
+      if (!t.type || t.skip || !canRedundancy(t.type)) return;
       const k = mkey(t.type, t.label);
-      if (!r[k]) r[k] = (t.count || 2) > 2 ? 'HA cluster' : 'Redundant pair';
+      if (r[k]) return;
+      /* Only when the user said it outright — an inferred answer here would be a
+         guess dressed up as their own words, and the whole Resilience stage rests on it. */
+      if (t.redundancy && t.redundancy !== 'unknown') { r[k] = t.redundancy; return; }
+      if ((t.count || 1) > 1) r[k] = (t.count || 2) > 2 ? 'HA cluster' : 'Redundant pair';
+    });
+  }
+
+  /* ---------- LLM front door (INTERVIEW_MODE_SPEC.md §6) ---------- */
+  /* Strictly additive. The server answers 501 with no API key, and every failure
+     path lands on the lexicon, so the interview works offline exactly as before. */
+  function parseWithLLM(text) {
+    return fetch('/api/interview/parse', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, anchor: S.answers.anchor || '', app: S.answers.ownership || '' })
+    }).then(r => r.json().catch(() => ({})).then(body => {
+      if (r.status === 501) { const e = new Error(body.error || 'unavailable'); e.unavailable = true; throw e; }
+      if (!r.ok) throw new Error(body.error || `The parser returned ${r.status}.`);
+      if (!Array.isArray(body.items)) throw new Error(`The parser returned nothing usable.`);
+      return body;
+    }));
+  }
+
+  /* Several traps can match one phrase ("app servers" hits both `app` and `server`).
+     The model's own candidate list says which question it was actually unsure about,
+     so that wins; failing that the head noun does, as in the lexicon. */
+  function pickTrap(term, candidates) {
+    const t = String(term || ''), cands = candidates || [];
+    let best = null, bestScore = -1;
+    (lex().traps || []).forEach(tr => {
+      const m = t.match(tr.pattern);
+      if (!m) return;
+      const overlap = (tr.options || []).filter(o => o.type && cands.includes(o.type)).length;
+      const score = overlap * 1000 + m.index;
+      if (score > bestScore) { bestScore = score; best = tr; }
+    });
+    return best;
+  }
+
+  /* The model proposes; the traps still fire. An ambiguous term is handed back to
+     the user as a question rather than resolved silently — that question is the
+     most valuable moment in the interview, so the LLM never gets to skip it. */
+  function fromLLM(items) {
+    const self = [S.answers.anchor, S.answers.ownership].filter(Boolean).map(norm);
+    return items.map(it => {
+      const term = it.sourcePhrase || it.label;
+      const known = it.type && schema().nodeTypes[it.type];
+      if (known && !it.ambiguous) {
+        const label = it.label || it.type;
+        return { term, label, type: it.type, why: it.why || `The model chose ${it.type}.`, phrase: it.sourcePhrase, generic: norm(label) === norm(it.type), count: it.count || 1, redundancy: it.redundancy };
+      }
+      /* Prefer the hand-written trap: its wording is the teaching, not a paraphrase. */
+      const trap = pickTrap(term, it.candidates);
+      if (trap) return { term, label: '', type: '', why: trap.why, trapKey: trap.key, ask: trap.ask, options: trap.options, phrase: it.sourcePhrase, generic: true, count: it.count || 1, redundancy: it.redundancy };
+      const cands = (it.candidates || []).filter(c => schema().nodeTypes[c]);
+      if (cands.length > 1) return { term, label: '', type: '', why: it.why || `These words map to more than one class, so I will not guess.`, trapKey: `llm:${norm(term)}`, ask: `Which of these is “${term}”?`, options: cands.map(c => ({ label: c, type: c })), phrase: it.sourcePhrase, generic: true, count: it.count || 1, redundancy: it.redundancy };
+      return { term, label: it.label || '', type: '', why: it.why || `I did not recognise this word, so you tell me what it is.`, unknown: true, phrase: it.sourcePhrase, generic: false, count: it.count || 1, redundancy: it.redundancy };
+    }).filter(t => !self.includes(norm(t.label)) && !self.includes(norm(t.term))).slice(0, 40);
+  }
+
+  function runParse(text) {
+    S.parsing = true;
+    renderStage();
+    parseWithLLM(text).then(body => {
+      S.answers.infra = fromLLM(body.items);
+      S.parseSource = `read by ${esc(body.model || 'the model')}`;
+    }).catch(err => {
+      S.answers.infra = parseInfra(text);
+      S.parseSource = err && err.unavailable
+        ? `read with my built-in vocabulary — no parser API key is configured`
+        : `read with my built-in vocabulary — the parser was unavailable`;
+    }).then(() => {
+      S.parsing = false;
+      S.parsedText = text;
+      normalizeInfra();
+      seedRedundancy();
+      if (pendingInfra().length) renderStage();
+      else { S.i++; renderStage(); }
     });
   }
 
@@ -173,8 +276,9 @@
       id: 'infrastructure', title: `What does it sit on?`,
       lead: () => `Now down the stack. ${esc(S.answers.anchor)} has to run on something.`,
       ask: `What does ${'${anchor}'} run on, or need to work?`,
-      hint: `List everything in one go, however you say it — commas or new lines. I will sort out the CSDM classes and show you my reasoning.`,
+      hint: `List it or just say it in a sentence — commas, new lines, or plain prose like “two app servers that connect to a database on a VM”. I will pull out each thing, sort out the CSDM classes, and show you my reasoning.`,
       body: () => {
+        if (S.parsing) return `<div class="explain-box"><strong>Reading what you wrote…</strong> I am pulling out each thing you named and working out which CSDM class it is. Anything genuinely ambiguous I will hand back to you rather than guess.</div>`;
         const pend = pendingInfra(), resolved = (S.answers.infra || []).filter(t => t.type);
         if (pend.length) {
           return `<div class="explain-box"><strong>${pend.length} term${pend.length > 1 ? 's need' : ' needs'} a decision from you.</strong> I will not guess these — guessing would teach you something false.</div>
@@ -193,24 +297,39 @@
             ${resolved.length ? `<div class="path-step-help">Already resolved: ${resolved.map(t => `<strong>${esc(t.label)}</strong> [${esc(t.type)}]`).join(', ')}.</div>` : ''}`;
         }
         return `<div class="field full"><label>Everything it runs on or needs</label>
-            <textarea id="iv-infra" placeholder="e.g. a vsphere cluster, two VMs, postgres, an F5, us-east-1">${esc(S.answers.infraText || '')}</textarea></div>
+            <textarea id="iv-infra" placeholder="e.g. two app servers that connect to a postgres database hosted on a VM in us-east-1">${esc(S.answers.infraText || '')}</textarea></div>
           <div class="path-step-help">I will nest these by depth using each class level in the schema, and connect them with <em>Depends on</em> / <em>Runs on</em> rather than <em>Contains</em> — deliberately. Only those labels carry a failure <em>upward</em> to your service; a chain built from <em>Contains</em> looks right on the canvas and produces no cascade at all.</div>
-          ${resolved.length ? `<div class="explain-box">Recognised so far: ${resolved.map(t => `<strong>${esc(t.label)}</strong> <span class="muted">[${esc(t.type)}]</span>`).join(', ')}. Edit the box above to change them.</div>` : ''}`;
+          ${resolved.length ? `<div class="explain-box">Recognised so far: ${resolved.map(t => `<strong>${esc(t.label)}</strong> <span class="muted">[${esc(t.type)}]</span>`).join(', ')}. Edit the box above to change them.${S.parseSource ? `<br><span class="muted">${S.parseSource}</span>` : ''}</div>` : ''}`;
       },
       read: () => {
         const pend = pendingInfra();
         if (pend.length) {
           const sel = [...document.querySelectorAll('.iv-resolve')];
           if (sel.some(s => !s.value)) return `Make a call on each term — or choose “Leave this out of the model”.`;
-          sel.forEach(s => { const t = S.answers.infra[Number(s.dataset.idx)]; if (!t) return; if (s.value === 'SKIP') t.skip = true; else { t.type = s.value; t.why = t.why || `You chose this class for “${t.term}”.`; } });
+          sel.forEach(s => {
+            const t = S.answers.infra[Number(s.dataset.idx)]; if (!t) return;
+            if (s.value === 'SKIP') { t.skip = true; return; }
+            t.type = s.value;
+            /* A trapped term never named anything of its own, so the class you picked is the label. */
+            if (!t.label || t.generic) { t.label = s.value; t.generic = true; }
+            t.why = `${t.why} You chose ${s.value}.`;
+          });
+          normalizeInfra();
           seedRedundancy();
           return null;
         }
+        if (S.parsing) return `_stay`;
         const text = (document.getElementById('iv-infra').value || '').trim();
         S.answers.infraText = text;
-        S.answers.infra = text ? parseInfra(text) : [];
-        seedRedundancy();
-        if (pendingInfra().length) { renderStage(); return `_stay`; }
+        if (!text) { S.answers.infra = []; return; }
+        /* Coming Back and pressing Next again should not re-bill the same sentence. */
+        if (text === S.parsedText && (S.answers.infra || []).length) {
+          normalizeInfra(); seedRedundancy();
+          if (pendingInfra().length) { renderStage(); return `_stay`; }
+          return;
+        }
+        runParse(text);
+        return `_stay`;
       }
     },
     {
@@ -616,7 +735,7 @@
   function start() {
     if (!window.CSDM_SCHEMA) return alert(`Schema not loaded yet — try again in a moment.`);
     if (!window.CSDM_LEXICON) return alert(`Lexicon not loaded — check that interviewLexicon.js is included.`);
-    S = { i: 0, answers: { environments: ['Production'], capabilities: [''], infra: [], redundancy: {}, revenue: {}, cost: {} }, draft: null };
+    S = { i: 0, answers: { environments: ['Production'], capabilities: [''], infra: [], redundancy: {}, revenue: {}, cost: {} }, draft: null, parsing: false, parsedText: '', parseSource: '' };
     if (typeof closeBarMenus === 'function') closeBarMenus();
     renderStage();
   }

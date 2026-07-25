@@ -4,6 +4,7 @@ const fs = require('fs');
 const { validateGraph } = require('./shared/csdmValidator');
 const schema = require('./shared/csdmSchema');
 const { migrateModel } = require('./shared/migrations');
+const interviewParse = require('./interviewParse');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -231,6 +232,8 @@ app.post('/api/csdm/load-content', (req, res, next) => {
     next(err);
   }
 });
+
+interviewParse.register(app);
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok', phase: '3.7' }));
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));

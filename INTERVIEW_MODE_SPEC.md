@@ -570,20 +570,38 @@ interview shipped with only those two questions it would still be worth building
 
 ---
 
-## 6. Optional LLM front door
+## 6. LLM front door — BUILT (`interviewParse.js`)
 
-Strictly additive; the interview must work with no API key.
+Strictly additive; the interview works with no API key.
 
-- `POST /api/interview/parse` in `server.js`, `ANTHROPIC_API_KEY` from env only.
-- Single `client.messages.create` call, `model: 'claude-opus-5'`, `output_config.format` with a
-  JSON schema whose `type` enum is `Object.keys(nodeTypes)` and `label` enum is the distinct
-  `relationshipRules[].label` set — generated at request time so the model cannot invent a class.
-- Require `sourcePhrase` and `why` per node; require `redundancy` with an explicit `'unknown'`
-  member so every unknown becomes a **Resilience** row.
-- Cache the CSDM primer with `cache_control` (Opus 5 minimum cacheable prefix is 512 tokens).
+- `POST /api/interview/parse` registered from `interviewParse.js`, `ANTHROPIC_API_KEY` from env
+  only. The SDK is `require`d lazily, so a missing dependency degrades to 501 rather than
+  taking the server down.
+- Single `client.messages.create` call, `model: 'claude-haiku-4-5'`, `output_config.format` with
+  a JSON schema whose `type` enum is `Object.keys(nodeTypes)` — generated at request time so the
+  model cannot invent a class. No `thinking`, and **no `output_config.effort`** (Haiku 4.5 errors
+  on it); extraction against a fixed enum does not need either.
+- Required per item: `sourcePhrase`, `label`, `type`, `why`, `ambiguous`, `candidates`, `count`,
+  `redundancy`. `redundancy` carries an explicit `'unknown'` member so an unstated one stays a
+  **Resilience** question instead of being inferred.
+- **Deviation from the original draft: no `label` enum, and the LLM emits no edges.** It extracts
+  *things* only. Relationships are still built deterministically in `buildDraft()`, because the
+  spine must use `IMPACT_REVERSE_LABELS` or the cascade silently dies (§2.3) — that invariant is
+  not something a model gets a vote on.
+- The enum makes an invented class impossible, but the model still controls free text and array
+  lengths, so `sanitize()` re-checks every field server-side before it reaches the client.
+- The CSDM primer + class table are cached with `cache_control`. **Haiku 4.5's minimum cacheable
+  prefix is 4096 tokens** — below that this silently does nothing, which is why the endpoint logs
+  `cache read`/`write` per call. Check that log before assuming caching is working.
 - The response **pre-fills the interview**; the user still walks **Review**. The LLM never
   authors a rule.
-- No key → `501 { unavailable: true }` → client falls back to §4 verbatim.
+- **Ambiguity still belongs to the user.** `ambiguous: true` (or an unknown class) routes back
+  into the §4.9 traps via `pickTrap()` in `interview.js`, which prefers the hand-written trap
+  whose options overlap the model's `candidates`, then the head noun. The model's `candidates`
+  only build a question when no trap matches. An LLM that confidently resolves "app servers"
+  deletes the best teaching moment in the interview, so it is not allowed to.
+- No key, no SDK, a non-2xx, or malformed JSON → the client falls back to §4 verbatim and says
+  which parser ran.
 
 ---
 
