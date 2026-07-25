@@ -68,6 +68,21 @@ function configState() {
   };
 }
 
+/* The API's own message is the useful part, but the common failures deserve a
+   sentence that says what to do about them — "400 invalid_request_error" does not
+   tell you to go buy credits. */
+function explainKeyError(err) {
+  const raw = String((err && err.message) || '').trim();
+  const status = err && err.status;
+  if (/credit balance/i.test(raw)) return `The key works, but the account has no API credits. Add credits at console.anthropic.com under Billing — API credits are separate from a Claude.ai subscription.`;
+  if (status === 401) return `That key was rejected. Check it was copied whole (they start with sk-ant-) and has not been revoked.`;
+  if (status === 403) return `That key is valid but not permitted to use ${MODEL}. ${raw}`;
+  if (status === 404) return `The API does not recognise the model ${MODEL}. ${raw}`;
+  if (status === 429) return `Rate limited before the key could be checked — try again in a moment.`;
+  if (/ENOTFOUND|ECONNREFUSED|ETIMEDOUT|fetch failed/i.test(raw)) return `Could not reach api.anthropic.com from this machine — check the network or a proxy.`;
+  return raw ? `${status ? `${status}: ` : ''}${raw}` : `The key could not be verified.`;
+}
+
 /* A key that is merely present is not a key that works. One minimal call surfaces a
    typo or a revoked key here, rather than three stages later in the interview. */
 async function verifyKey() {
@@ -307,8 +322,10 @@ function register(app) {
       /* A key that fails its own test never becomes the configured key. */
       runtimeApiKey = previous;
       client = null;
-      const detail = err && err.status === 401 ? `That key was rejected by the API.` : (err.message || `The key could not be verified.`);
-      res.status(400).json({ success: false, error: detail, config: configState() });
+      /* Logged in full because the browser only gets the sentence, and the
+         useful part of an Anthropic error is usually the raw message. */
+      console.error(`[interview] key verification failed — status ${err.status || '?'} — ${err.message}`);
+      res.status(400).json({ success: false, error: explainKeyError(err), config: configState() });
     }
   });
 }

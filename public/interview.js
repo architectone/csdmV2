@@ -848,24 +848,28 @@
     if (input) setTimeout(() => input.focus(), 40);
   }
 
+  /* Failures render as a block, not an inline span — the previous version put the
+     reason in small text between the input and the buttons, where it was missed. */
   function msg(text, cls) {
     const el = document.getElementById('iv-parser-msg');
-    if (el) el.innerHTML = `<span class="${cls || 'muted'}">${text}</span>`;
+    if (!el) return;
+    el.className = text ? `iv-parser-msg ${cls || 'iv-msg-info'}` : '';
+    el.innerHTML = text || '';
   }
 
   function saveKey() {
     const input = document.getElementById('iv-apikey');
     const key = (input.value || '').trim();
     if (!key) return msg(`Paste a key first.`, 'iv-msg-bad');
-    msg(`Testing the key against the API…`);
+    msg(`Testing the key against the API…`, 'iv-msg-info');
     postLLMKey(key).then(body => {
       if (body.success) {
         input.value = '';
-        msg(`${esc(body.message)}`, 'iv-msg-good');
+        msg(`&#10003; ${esc(body.message)}`, 'iv-msg-good');
         paintParserPanel();
         if (S) renderStage();
       } else {
-        msg(`${esc(body.error || 'That did not work.')}`, 'iv-msg-bad');
+        msg(`<strong>The key was not accepted.</strong><br>${esc(body.error || 'That did not work.')}`, 'iv-msg-bad');
       }
     });
   }
