@@ -21,6 +21,34 @@
     { v: 'Auto-scaling', label: `It scales itself out automatically`, survives: `up to losing an availability zone` }
   ];
   let S = null;
+  let llmConfig = null;
+
+  /* ---------- LLM configuration ---------- */
+  async function getLLMConfig() {
+    if (llmConfig) return llmConfig;
+    try {
+      const res = await fetch('/api/interview/config');
+      llmConfig = await res.json();
+      return llmConfig;
+    } catch (err) {
+      return { llmAvailable: false, apiKeyConfigured: false };
+    }
+  }
+
+  async function setLLMApiKey(apiKey) {
+    try {
+      const res = await fetch('/api/interview/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey })
+      });
+      const result = await res.json();
+      llmConfig = null; // Reset cache
+      return result;
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
 
   /* ---------- helpers ---------- */
   function esc(v) { return String(v ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;'); }
@@ -299,7 +327,7 @@
         return `<div class="field full"><label>Everything it runs on or needs</label>
             <textarea id="iv-infra" placeholder="e.g. two app servers that connect to a postgres database hosted on a VM in us-east-1">${esc(S.answers.infraText || '')}</textarea></div>
           <div class="path-step-help">I will nest these by depth using each class level in the schema, and connect them with <em>Depends on</em> / <em>Runs on</em> rather than <em>Contains</em> — deliberately. Only those labels carry a failure <em>upward</em> to your service; a chain built from <em>Contains</em> looks right on the canvas and produces no cascade at all.</div>
-          ${resolved.length ? `<div class="explain-box">Recognised so far: ${resolved.map(t => `<strong>${esc(t.label)}</strong> <span class="muted">[${esc(t.type)}]</span>`).join(', ')}. Edit the box above to change them.${S.parseSource ? `<br><span class="muted">${S.parseSource}</span>` : ''}</div>` : ''}`;
+          ${resolved.length ? `<div class="explain-box">Recognised so far: ${resolved.map(t => `<strong>${esc(t.label)}</strong> <span class="muted">[${esc(t.type)}]</span>`).join(', ')}. Edit the box above to change them.${S.parseSource ? `<br><span class="iv-parse-source">${S.parseSource}</span>` : ''}<br><button type="button" class="inline-action iv-config-llm" onclick="CSDM_IV.showLLMConfig()">⚙ Configure LLM API key</button></div>` : ''}`;
       },
       read: () => {
         const pend = pendingInfra();
@@ -740,6 +768,75 @@
     renderStage();
   }
 
+  function showLLMConfig() {
+    const modal = document.querySelector('.modal');
+    if (!modal) return;
+    const configHTML = `
+      <div class="iv-config-panel" style="padding: 20px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; margin: 20px 0;">
+        <h3 style="margin-top: 0;">LLM API Key Configuration</h3>
+        <p>Configure an Anthropic API key to use the Claude LLM for faster, smarter parsing. Get a key at <strong>console.anthropic.com</strong>.</p>
+        <div class="form-grid">
+          <div class="field full">
+            <label>API Key (kept in memory, not saved to disk)</label>
+            <input id="iv-apikey" type="password" placeholder="sk-ant-..." style="font-family: monospace;" />
+          </div>
+        </div>
+        <div style="display: flex; gap: 10px; margin-top: 15px;">
+          <button type="button" class="inline-action" onclick="CSDM_IV.saveLLMConfig()">✓ Save & Test</button>
+          <button type="button" class="inline-action" onclick="CSDM_IV.clearLLMConfig()">✕ Clear Key</button>
+          <button type="button" class="inline-action" onclick="CSDM_IV.closeLLMConfig()">Close</button>
+        </div>
+        <div id="iv-config-status" style="margin-top: 15px; font-size: 0.9em;"></div>
+      </div>
+    `;
+    const existing = document.querySelector('.iv-config-panel');
+    if (existing) existing.remove();
+    const target = modal.querySelector('.modal-body') || modal;
+    const div = document.createElement('div');
+    div.innerHTML = configHTML;
+    target.insertBefore(div.firstChild, target.firstChild);
+
+    getLLMConfig().then(config => {
+      const status = document.getElementById('iv-config-status');
+      if (config.apiKeyConfigured) {
+        status.innerHTML = `<span style="color: green;">✓ LLM is configured and ready to use</span>`;
+      } else {
+        status.innerHTML = `<span style="color: #666;">No API key configured — will use built-in lexicon fallback</span>`;
+      }
+    });
+  }
+
+  function saveLLMConfig() {
+    const key = (document.getElementById('iv-apikey').value || '').trim();
+    if (!key) return alert('Please enter an API key.');
+    const status = document.getElementById('iv-config-status');
+    status.innerHTML = `<span style="color: #999;">Testing…</span>`;
+    setLLMApiKey(key).then(result => {
+      if (result.success) {
+        status.innerHTML = `<span style="color: green;">✓ ${result.message}</span>`;
+        document.getElementById('iv-apikey').value = '';
+        setTimeout(() => renderStage(), 500);
+      } else {
+        status.innerHTML = `<span style="color: red;">✗ ${result.error}</span>`;
+      }
+    });
+  }
+
+  function clearLLMConfig() {
+    const status = document.getElementById('iv-config-status');
+    status.innerHTML = `<span style="color: #999;">Clearing…</span>`;
+    setLLMApiKey('').then(result => {
+      status.innerHTML = `<span style="color: #666;">API key cleared — will use built-in lexicon fallback</span>`;
+      document.getElementById('iv-apikey').value = '';
+      setTimeout(() => renderStage(), 500);
+    });
+  }
+
+  function closeLLMConfig() {
+    const existing = document.querySelector('.iv-config-panel');
+    if (existing) existing.remove();
+  }
+
   window.CSDM_IV = {
     start, next, back, commit, regionCloser,
     addCap: () => { readCapsLoose(); S.answers.capabilities.push(''); renderStage(); setTimeout(() => { const r = document.querySelectorAll('.iv-cap'); if (r.length) r[r.length - 1].focus(); }, 60); },
@@ -748,6 +845,7 @@
     delCap: i => { readCapsLoose(); S.answers.capabilities.splice(i, 1); if (!S.answers.capabilities.length) S.answers.capabilities = ['']; renderStage(); },
     addTier: () => { readTiersLoose(); S.answers.consumers.tiers.push(''); renderStage(); setTimeout(() => { const r = document.querySelectorAll('.iv-tier'); if (r.length) r[r.length - 1].focus(); }, 60); },
     delTier: i => { readTiersLoose(); S.answers.consumers.tiers.splice(i, 1); if (!S.answers.consumers.tiers.length) S.answers.consumers.tiers = ['']; renderStage(); },
+    showLLMConfig, saveLLMConfig, clearLLMConfig, closeLLMConfig,
     _state: () => S, _draft: () => buildDraft()
   };
   window.CSDM_START_INTERVIEW = start;

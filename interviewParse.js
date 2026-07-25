@@ -17,13 +17,15 @@ const MAX_ITEMS = 40;
 
 let client = null;
 let sdkError = null;
+let runtimeApiKey = null; // Can be set via API endpoint
 
 /* Lazily required so a missing dependency degrades to 501 instead of killing the server. */
 function getClient() {
   if (client || sdkError) return client;
   try {
     const { Anthropic } = require('@anthropic-ai/sdk');
-    client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const apiKey = runtimeApiKey || process.env.ANTHROPIC_API_KEY;
+    client = new Anthropic({ apiKey });
   } catch (err) {
     sdkError = err;
   }
@@ -230,6 +232,39 @@ function register(app) {
       if (err.unavailable) return res.status(501).json({ unavailable: true, error: err.message });
       console.error('[interview] parse failed:', err.message);
       res.status(err.status || 502).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/interview/config', (req, res) => {
+    res.json({
+      llmAvailable: !!getClient() && !!((runtimeApiKey || process.env.ANTHROPIC_API_KEY)),
+      apiKeyConfigured: !!(runtimeApiKey || process.env.ANTHROPIC_API_KEY),
+      model: MODEL
+    });
+  });
+
+  app.post('/api/interview/config', (req, res) => {
+    const body = req.body || {};
+    const apiKey = String(body.apiKey || '').trim();
+
+    if (!apiKey) {
+      runtimeApiKey = null;
+      client = null;
+      sdkError = null;
+      return res.json({ success: true, message: 'API key cleared' });
+    }
+
+    runtimeApiKey = apiKey;
+    client = null; // Reset client to pick up new key
+    sdkError = null;
+
+    try {
+      getClient(); // Test that the key works
+      res.json({ success: true, message: 'API key configured' });
+    } catch (err) {
+      runtimeApiKey = null;
+      client = null;
+      res.status(400).json({ success: false, error: 'Failed to configure API key: ' + err.message });
     }
   });
 }

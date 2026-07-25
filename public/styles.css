@@ -48,3 +48,5 @@ body{font-family:Segoe UI,Tahoma,sans-serif;margin:0;height:100vh;display:flex;f
 .iv-grid select,.iv-grid input{width:100%}
 #modal-body textarea{min-height:80px;font-family:inherit}
 .iv-parentrow td{background:#eff6ff}
+.iv-parse-source{font-size:11px;color:#0f766e;font-weight:600;display:inline-block;padding:4px 8px;background:#ccfbf1;border-radius:4px;margin:8px 0 0 0}
+.iv-config-llm{background:#64748b;font-size:11px;padding:6px 10px;margin-left:8px}
