@@ -95,7 +95,7 @@
       { pattern: /\b(data service|database service|db platform)\b/i, type: 'Data Service Instance', why: `A service wrapper around storage — the database service you offer, distinct from the instance.` }
     ]},
     { name: 'Network', entries: [
-      { pattern: /\b(f5|haproxy|albs?|nlbs?|elbs?|load ?balancers?|lbs?)\b/i, type: 'Load Balancer', why: `Distributes traffic. Note this schema has no redundancy field for it, so it will always read as a single point of failure.` },
+      { pattern: /\b(f5|haproxy|albs?|nlbs?|elbs?|load ?balancers?|lbs?)\b/i, type: 'Load Balancer', why: `Distributes traffic — and it is usually the redundant thing sitting in front of everything else, so what it survives is worth answering carefully.` },
       { pattern: /\b(ingress(es)?|ingress controllers?|api gateways?)\b/i, type: 'Ingress', why: `The cluster front door for inbound traffic.` },
       { pattern: /\b(vlans?|network segments?|vpcs?)\b/i, type: 'Network Segment', why: `A broadcast or routing boundary.` },
       { pattern: /\b(subnets?|cidrs?)\b/i, type: 'Subnet', why: `An address range inside a segment.` },

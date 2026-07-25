@@ -94,13 +94,14 @@ user-built model:
 ### 2.4 Classes that cannot carry redundancy
 
 `supportsRedundancy()` is true only where the class has a `redundancy` metadata field. It is
-**absent** on: `Load Balancer`, `Storage Volume`, `Ingress`, `Certificate`, `Key Vault`,
+**absent** on: `Storage Volume`, `Ingress`, `Certificate`, `Key Vault`,
 `Secret`, `Network Segment`, `Subnet`, `DNS Record`, `Namespace`, `Workload`, `Pod`,
 `Container`, `Container Image`, `Infrastructure CI`, `Application Service`, `Application`.
 
 **Resilience** must skip the redundancy question for these (asking would collect an answer
 nothing reads).
-See Open issues — `Load Balancer` missing `redundancy` looks like a genuine schema gap.
+`Load Balancer` **does** carry `redundancy` (added to the schema after this spec was written) —
+it is a canonical redundancy device and no longer reads as an automatic SPOF.
 
 ---
 
@@ -483,7 +484,7 @@ the user's word implies that class. Unmatched terms are not failures — they be
 
 | Pattern | Class | why |
 |---|---|---|
-| `f5`, `nginx` (as LB), `haproxy`, `alb`, `nlb`, `elb`, `load ?balancer` | `Load Balancer` | Distributes traffic; note this schema has no redundancy field for it. |
+| `f5`, `nginx` (as LB), `haproxy`, `alb`, `nlb`, `elb`, `load ?balancer` | `Load Balancer` | Distributes traffic — and it is usually the redundant thing in front of everything else, so ask what it survives. |
 | `ingress`, `ingress controller`, `api gateway` | `Ingress` | The cluster's front door for inbound traffic. |
 | `vlan`, `network segment`, `vpc` | `Network Segment` | A broadcast/routing boundary. |
 | `subnet`, `cidr` | `Subnet` | An address range inside a segment. |
@@ -588,11 +589,10 @@ Strictly additive; the interview must work with no API key.
 
 ## 7. Open issues
 
-1. **`Load Balancer` has no `redundancy` metadata field**, nor does `Storage Volume`. Both are
-   canonical redundancy devices; a load balancer will always read as a SPOF. Looks like a schema
-   gap rather than a deliberate choice — worth fixing in `shared/csdmSchema.js` (requires a
-   server restart per CLAUDE.md).
-2. `CLAUDE.md` says "~35 `nodeTypes`"; the actual count is **50**. Worth correcting.
+1. ~~**`Load Balancer` has no `redundancy` metadata field**~~ — **fixed**: `Load Balancer` now
+   carries the standard `redundancy` select in `shared/csdmSchema.js`. `Storage Volume` still
+   does not, and is the same kind of gap (mirrored volumes / replicated datastores are real).
+2. ~~`CLAUDE.md` says "~35 `nodeTypes`"~~ — **fixed**, it now says 50.
 3. Should **Consumers** create a `Business Service --Provides--> Business Capability` edge *and* the
    `Business Application --Provides--> Business Capability` edge? Both are legal and both carry
    impact. Two paths to the same Capability may double-count nothing (it is a `Set`) but will
