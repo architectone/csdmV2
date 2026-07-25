@@ -14,3 +14,37 @@ body{font-family:Segoe UI,Tahoma,sans-serif;margin:0;height:100vh;display:flex;f
 
 /* Incident Replay ("2am page") */
 .ir-pager{background:#0f172a;color:#fff;border-radius:12px;padding:12px 14px;border:1px solid #000;box-shadow:0 10px 24px rgba(15,23,42,.35)}.ir-pager.ir-quiet{background:#064e3b;border-color:#022c22}.ir-pager-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}.ir-sev{background:#dc2626;color:#fff;font-weight:800;font-size:11px;letter-spacing:.05em;padding:3px 8px;border-radius:6px}.ir-sev.ir-sev-ok{background:#10b981}.ir-time{font-variant-numeric:tabular-nums;font-weight:800;font-size:13px;color:#fca5a5}.ir-quiet .ir-time{color:#6ee7b7}.ir-page-label{margin-left:auto;font-size:10px;font-weight:800;letter-spacing:.15em;color:#94a3b8}.ir-pager-body{font-size:13px;line-height:1.5}.ir-timeline{display:flex;flex-direction:column;gap:8px;margin:4px 0}.ir-step{display:flex;gap:10px;align-items:flex-start;background:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #94a3b8;border-radius:8px;padding:8px 10px;animation:irIn .25s ease}.ir-step-page{border-left-color:#dc2626}.ir-step-root{border-left-color:#7f1d1d;background:#fef2f2;border-color:#fecaca}.ir-step-time{font-variant-numeric:tabular-nums;font-weight:800;font-size:12px;color:#475569;min-width:44px;padding-top:1px}.ir-step-body{font-size:12px;line-height:1.5;color:#0f172a}.ir-step-body em{font-style:normal;font-weight:700;color:#1d4ed8}.ir-down{background:#7f1d1d;color:#fff;font-weight:800;font-size:11px;padding:1px 6px;border-radius:5px;letter-spacing:.03em}.ir-controls{display:flex;gap:8px;justify-content:flex-end;margin-top:6px}.ir-controls button{padding:8px 12px;border:none;border-radius:7px;font-weight:700;cursor:pointer;background:#2563eb;color:#fff}.ir-controls button.secondary{background:#64748b}.ir-controls button:disabled{background:#cbd5e1;color:#64748b;cursor:not-allowed}.ir-payoff{margin-top:4px}@keyframes irIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+
+/* Interview Mode */
+.iv-progress{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:2px}
+.iv-dot{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:3px 8px;border-radius:999px;background:#f1f5f9;color:#94a3b8;border:1px solid #e2e8f0}
+.iv-dot.on{background:#2563eb;color:#fff;border-color:#2563eb}
+.iv-dot.done{background:#dbeafe;color:#1e40af;border-color:#bfdbfe}
+.iv-ask{font-size:16px;font-weight:700;margin:2px 0;line-height:1.35}
+.iv-hint{font-size:11px;margin:0 0 4px 0}
+.iv-h{font-size:12px;margin:10px 0 0 0;color:#334155;text-transform:uppercase;letter-spacing:.04em}
+.iv-claim-head{font-size:13px;font-weight:400;color:#0f172a;text-transform:none;display:flex;align-items:center;gap:8px;cursor:pointer}
+.iv-claim-head input{margin:0}
+.iv-phrase{font-size:11px;font-style:italic;margin:4px 0 0 26px}
+.path-step .path-step-help{margin-left:26px}
+.iv-invalid{background:#fef2f2;border-color:#fecaca}
+#modal-body .field label:has(input[type=checkbox]){font-size:12px;font-weight:600;color:#0f172a;text-transform:none;display:flex;align-items:center;gap:6px;cursor:pointer}
+#modal-body .field label input[type=checkbox]{width:auto}
+.iv-row{display:flex;gap:6px;align-items:center}
+.iv-row input{flex:1;min-width:0}
+.iv-x{background:#e2e8f0;color:#334155;border:none;border-radius:7px;width:30px;height:30px;font-weight:800;font-size:15px;line-height:1;cursor:pointer;flex:none}
+.iv-x:hover{background:#fecaca;color:#991b1b}
+.iv-addrow{display:flex;justify-content:flex-start}
+.iv-addrow .inline-action{background:#64748b;font-size:11px;padding:6px 9px}
+.iv-reused{border-left:3px solid #2563eb}
+.iv-already{opacity:.7}
+.iv-nocheck{font-size:13px;display:flex;align-items:center;gap:8px;padding-left:26px}
+.iv-tag{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;background:#e2e8f0;color:#475569;border-radius:999px;padding:2px 7px;white-space:nowrap}
+.iv-tag-reuse{background:#dbeafe;color:#1e40af}
+.iv-grid{width:100%;border-collapse:collapse;font-size:12px}
+.iv-grid th{font-size:9px;text-transform:uppercase;letter-spacing:.04em;color:#64748b;text-align:left;padding:4px 6px;border-bottom:1px solid #e2e8f0}
+.iv-grid td{padding:6px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+.iv-grid td:first-child{width:42%}
+.iv-grid select,.iv-grid input{width:100%}
+#modal-body textarea{min-height:80px;font-family:inherit}
+.iv-parentrow td{background:#eff6ff}

@@ -682,8 +682,8 @@
         "redundancy": "Redundant pair",
         "monthlyCost": "1200",
         "position": {
-          "x": -920,
-          "y": 967
+          "x": -946,
+          "y": 1037
         }
       }
     },
@@ -700,8 +700,8 @@
         "redundancy": "Redundant pair",
         "monthlyCost": "1200",
         "position": {
-          "x": -840,
-          "y": 967
+          "x": -849,
+          "y": 1044
         }
       }
     },
@@ -719,7 +719,7 @@
         "monthlyCost": "400",
         "position": {
           "x": -760,
-          "y": 967
+          "y": 1073
         }
       }
     },
@@ -736,8 +736,8 @@
         "redundancy": "Single instance",
         "monthlyCost": "2500",
         "position": {
-          "x": -680,
-          "y": 967
+          "x": -656,
+          "y": 1075
         }
       }
     },
@@ -754,8 +754,8 @@
         "redundancy": "Single instance",
         "monthlyCost": "900",
         "position": {
-          "x": -560,
-          "y": 967
+          "x": -478,
+          "y": 1071
         }
       }
     },
@@ -772,8 +772,8 @@
         "redundancy": "Single instance",
         "monthlyCost": "3000",
         "position": {
-          "x": -480,
-          "y": 967
+          "x": -337,
+          "y": 1067
         }
       }
     }
