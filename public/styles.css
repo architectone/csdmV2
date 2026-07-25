@@ -48,5 +48,18 @@ body{font-family:Segoe UI,Tahoma,sans-serif;margin:0;height:100vh;display:flex;f
 .iv-grid select,.iv-grid input{width:100%}
 #modal-body textarea{min-height:80px;font-family:inherit}
 .iv-parentrow td{background:#eff6ff}
-.iv-parse-source{font-size:11px;color:#0f766e;font-weight:600;display:inline-block;padding:4px 8px;background:#ccfbf1;border-radius:4px;margin:8px 0 0 0}
-.iv-config-llm{background:#64748b;font-size:11px;padding:6px 10px;margin-left:8px}
+/* Parser status: the status-bar button is itself the indicator. */
+.iv-led{width:8px;height:8px;border-radius:999px;background:currentColor;display:inline-block;margin-right:7px;flex:none}
+#iv-parser-btn{display:inline-flex;align-items:center;white-space:nowrap}
+#iv-parser-btn.iv-parser-on{background:#0f766e}
+#iv-parser-btn.iv-parser-off{background:#64748b}
+#iv-parser-panel{width:340px}
+#iv-parser-panel .explain-box{font-size:11px;line-height:1.5}
+#iv-parser-panel input{width:100%;font-family:ui-monospace,Consolas,monospace}
+#iv-parser-panel .bar-menu-actions button{flex:1;background:#2563eb!important}
+#iv-parser-panel .bar-menu-actions button:last-child{background:#64748b!important}
+.iv-msg-good{color:#166534;font-size:11px;font-weight:600}
+.iv-msg-bad{color:#991b1b;font-size:11px;font-weight:600}
+.iv-source{display:flex;align-items:center;font-size:11px;line-height:1.5;border-radius:8px;padding:7px 10px;border:1px solid}
+.iv-source-llm{background:#f0fdfa;border-color:#99f6e4;color:#0f766e}
+.iv-source-lex{background:#f8fafc;border-color:#e2e8f0;color:#475569}

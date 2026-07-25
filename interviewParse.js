@@ -16,20 +16,68 @@ const MAX_INPUT = 4000;
 const MAX_ITEMS = 40;
 
 let client = null;
-let sdkError = null;
-let runtimeApiKey = null; // Can be set via API endpoint
+/* Held in memory only, and deliberately never written to disk or echoed back to the
+   browser — a key in csdmData.json or localStorage would outlive the session that
+   needed it. Restarting the server clears it. */
+let runtimeApiKey = null;
+
+function sdkInstalled() {
+  try {
+    require('@anthropic-ai/sdk');
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+function currentKey() {
+  return runtimeApiKey || process.env.ANTHROPIC_API_KEY || '';
+}
+
+function keySource() {
+  if (runtimeApiKey) return 'runtime';
+  if (process.env.ANTHROPIC_API_KEY) return 'env';
+  return null;
+}
 
 /* Lazily required so a missing dependency degrades to 501 instead of killing the server. */
 function getClient() {
-  if (client || sdkError) return client;
+  if (client) return client;
+  const apiKey = currentKey();
+  if (!apiKey) return null;
   try {
     const { Anthropic } = require('@anthropic-ai/sdk');
-    const apiKey = runtimeApiKey || process.env.ANTHROPIC_API_KEY;
     client = new Anthropic({ apiKey });
   } catch (err) {
-    sdkError = err;
+    return null;
   }
   return client;
+}
+
+/* Status the UI can render without ever seeing the key itself. */
+function configState() {
+  const key = currentKey();
+  return {
+    sdkInstalled: sdkInstalled(),
+    apiKeyConfigured: !!key,
+    source: keySource(),
+    /* Enough to recognise which key is loaded, not enough to use it. */
+    hint: key ? `…${key.slice(-4)}` : '',
+    llmAvailable: !!key && sdkInstalled(),
+    model: MODEL
+  };
+}
+
+/* A key that is merely present is not a key that works. One minimal call surfaces a
+   typo or a revoked key here, rather than three stages later in the interview. */
+async function verifyKey() {
+  const anthropic = getClient();
+  if (!anthropic) throw new Error(`The Anthropic SDK is not installed. Run: npm install @anthropic-ai/sdk`);
+  await anthropic.messages.create({
+    model: MODEL,
+    max_tokens: 1,
+    messages: [{ role: 'user', content: 'hi' }]
+  });
 }
 
 function classNames() {
@@ -114,15 +162,15 @@ Pull out each thing they named.`;
 }
 
 async function parseInterviewText(text, context) {
-  const anthropic = getClient();
-  if (!anthropic) {
-    const err = new Error(`The Anthropic SDK is not installed. Run: npm install @anthropic-ai/sdk`);
+  if (!currentKey()) {
+    const err = new Error(`No API key is configured, so the parser is unavailable.`);
     err.status = 501;
     err.unavailable = true;
     throw err;
   }
-  if (!process.env.ANTHROPIC_API_KEY) {
-    const err = new Error(`ANTHROPIC_API_KEY is not set, so the parser is unavailable.`);
+  const anthropic = getClient();
+  if (!anthropic) {
+    const err = new Error(`The Anthropic SDK is not installed. Run: npm install @anthropic-ai/sdk`);
     err.status = 501;
     err.unavailable = true;
     throw err;
@@ -235,36 +283,32 @@ function register(app) {
     }
   });
 
-  app.get('/api/interview/config', (req, res) => {
-    res.json({
-      llmAvailable: !!getClient() && !!((runtimeApiKey || process.env.ANTHROPIC_API_KEY)),
-      apiKeyConfigured: !!(runtimeApiKey || process.env.ANTHROPIC_API_KEY),
-      model: MODEL
-    });
-  });
+  app.get('/api/interview/config', (req, res) => res.json(configState()));
 
-  app.post('/api/interview/config', (req, res) => {
+  app.post('/api/interview/config', async (req, res) => {
     const body = req.body || {};
     const apiKey = String(body.apiKey || '').trim();
 
     if (!apiKey) {
       runtimeApiKey = null;
       client = null;
-      sdkError = null;
-      return res.json({ success: true, message: 'API key cleared' });
+      return res.json({ success: true, message: `Key cleared.`, config: configState() });
     }
 
+    const previous = runtimeApiKey;
     runtimeApiKey = apiKey;
-    client = null; // Reset client to pick up new key
-    sdkError = null;
+    client = null;
 
     try {
-      getClient(); // Test that the key works
-      res.json({ success: true, message: 'API key configured' });
+      await verifyKey();
+      console.log(`[interview] API key set via UI — LLM parsing is on.`);
+      res.json({ success: true, message: `Key accepted — the parser will use ${MODEL}.`, config: configState() });
     } catch (err) {
-      runtimeApiKey = null;
+      /* A key that fails its own test never becomes the configured key. */
+      runtimeApiKey = previous;
       client = null;
-      res.status(400).json({ success: false, error: 'Failed to configure API key: ' + err.message });
+      const detail = err && err.status === 401 ? `That key was rejected by the API.` : (err.message || `The key could not be verified.`);
+      res.status(400).json({ success: false, error: detail, config: configState() });
     }
   });
 }

@@ -21,34 +21,9 @@
     { v: 'Auto-scaling', label: `It scales itself out automatically`, survives: `up to losing an availability zone` }
   ];
   let S = null;
-  let llmConfig = null;
-
-  /* ---------- LLM configuration ---------- */
-  async function getLLMConfig() {
-    if (llmConfig) return llmConfig;
-    try {
-      const res = await fetch('/api/interview/config');
-      llmConfig = await res.json();
-      return llmConfig;
-    } catch (err) {
-      return { llmAvailable: false, apiKeyConfigured: false };
-    }
-  }
-
-  async function setLLMApiKey(apiKey) {
-    try {
-      const res = await fetch('/api/interview/config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey })
-      });
-      const result = await res.json();
-      llmConfig = null; // Reset cache
-      return result;
-    } catch (err) {
-      return { success: false, error: err.message };
-    }
-  }
+  /* Last known server answer. The stage bodies render synchronously, so the status has
+     to be already in hand — every fetch writes it here and re-renders whatever is open. */
+  let llmConfig = { llmAvailable: false, apiKeyConfigured: false, source: null, hint: '', model: '' };
 
   /* ---------- helpers ---------- */
   function esc(v) { return String(v ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;'); }
@@ -181,17 +156,29 @@
     }).filter(t => !self.includes(norm(t.label)) && !self.includes(norm(t.term))).slice(0, 40);
   }
 
+  /* Which parser is in play — shown before the answer is read as a promise, and after
+     it as a fact, because a fallback that happens silently is a fallback you debug twice. */
+  function parserBadge() {
+    if (S.parseSource) {
+      return S.parseSource.llm
+        ? `<div class="iv-source iv-source-llm"><span class="iv-led"></span>Read by <strong>${esc(S.parseSource.model)}</strong>${S.parseSource.note ? ` — ${esc(S.parseSource.note)}` : ''}</div>`
+        : `<div class="iv-source iv-source-lex"><span class="iv-led"></span>Read with the <strong>built-in vocabulary</strong> — ${esc(S.parseSource.note)}</div>`;
+    }
+    return llmConfig.llmAvailable
+      ? `<div class="iv-source iv-source-llm"><span class="iv-led"></span>Your answer will be read by <strong>${esc(llmConfig.model || 'the model')}</strong>. Change this under <strong>Parser</strong> in the status bar.</div>`
+      : `<div class="iv-source iv-source-lex"><span class="iv-led"></span>Your answer will be read with the <strong>built-in vocabulary</strong>. Add an API key under <strong>Parser</strong> in the status bar to use the model instead.</div>`;
+  }
+
   function runParse(text) {
     S.parsing = true;
     renderStage();
     parseWithLLM(text).then(body => {
       S.answers.infra = fromLLM(body.items);
-      S.parseSource = `read by ${esc(body.model || 'the model')}`;
+      const u = body.usage || {};
+      S.parseSource = { llm: true, model: body.model || 'the model', note: u.cacheRead ? `${u.cacheRead} cached tokens reused` : '' };
     }).catch(err => {
       S.answers.infra = parseInfra(text);
-      S.parseSource = err && err.unavailable
-        ? `read with my built-in vocabulary — no parser API key is configured`
-        : `read with my built-in vocabulary — the parser was unavailable`;
+      S.parseSource = { llm: false, note: err && err.unavailable ? `no API key is configured` : `the model call failed: ${err.message}` };
     }).then(() => {
       S.parsing = false;
       S.parsedText = text;
@@ -306,7 +293,8 @@
       ask: `What does ${'${anchor}'} run on, or need to work?`,
       hint: `List it or just say it in a sentence — commas, new lines, or plain prose like “two app servers that connect to a database on a VM”. I will pull out each thing, sort out the CSDM classes, and show you my reasoning.`,
       body: () => {
-        if (S.parsing) return `<div class="explain-box"><strong>Reading what you wrote…</strong> I am pulling out each thing you named and working out which CSDM class it is. Anything genuinely ambiguous I will hand back to you rather than guess.</div>`;
+        if (S.parsing) return `<div class="explain-box"><strong>Reading what you wrote…</strong> I am pulling out each thing you named and working out which CSDM class it is. Anything genuinely ambiguous I will hand back to you rather than guess.</div>
+          ${llmConfig.llmAvailable ? `<div class="iv-source iv-source-llm"><span class="iv-led"></span>Asking <strong>${esc(llmConfig.model || 'the model')}</strong>… if it fails I fall back to the built-in vocabulary.</div>` : `<div class="iv-source iv-source-lex"><span class="iv-led"></span>Using the <strong>built-in vocabulary</strong>.</div>`}`;
         const pend = pendingInfra(), resolved = (S.answers.infra || []).filter(t => t.type);
         if (pend.length) {
           return `<div class="explain-box"><strong>${pend.length} term${pend.length > 1 ? 's need' : ' needs'} a decision from you.</strong> I will not guess these — guessing would teach you something false.</div>
@@ -322,12 +310,14 @@
                   <option value="SKIP">Leave this out of the model</option>
                 </select></div>`;
             }).join('')}
-            ${resolved.length ? `<div class="path-step-help">Already resolved: ${resolved.map(t => `<strong>${esc(t.label)}</strong> [${esc(t.type)}]`).join(', ')}.</div>` : ''}`;
+            ${resolved.length ? `<div class="path-step-help">Already resolved: ${resolved.map(t => `<strong>${esc(t.label)}</strong> [${esc(t.type)}]`).join(', ')}.</div>` : ''}
+            ${parserBadge()}`;
         }
         return `<div class="field full"><label>Everything it runs on or needs</label>
             <textarea id="iv-infra" placeholder="e.g. two app servers that connect to a postgres database hosted on a VM in us-east-1">${esc(S.answers.infraText || '')}</textarea></div>
           <div class="path-step-help">I will nest these by depth using each class level in the schema, and connect them with <em>Depends on</em> / <em>Runs on</em> rather than <em>Contains</em> — deliberately. Only those labels carry a failure <em>upward</em> to your service; a chain built from <em>Contains</em> looks right on the canvas and produces no cascade at all.</div>
-          ${resolved.length ? `<div class="explain-box">Recognised so far: ${resolved.map(t => `<strong>${esc(t.label)}</strong> <span class="muted">[${esc(t.type)}]</span>`).join(', ')}. Edit the box above to change them.${S.parseSource ? `<br><span class="iv-parse-source">${S.parseSource}</span>` : ''}<br><button type="button" class="inline-action iv-config-llm" onclick="CSDM_IV.showLLMConfig()">⚙ Configure LLM API key</button></div>` : ''}`;
+          ${parserBadge()}
+          ${resolved.length ? `<div class="explain-box">Recognised so far: ${resolved.map(t => `<strong>${esc(t.label)}</strong> <span class="muted">[${esc(t.type)}]</span>`).join(', ')}. Edit the box above to change them.</div>` : ''}`;
       },
       read: () => {
         const pend = pendingInfra();
@@ -765,76 +755,130 @@
     if (!window.CSDM_LEXICON) return alert(`Lexicon not loaded — check that interviewLexicon.js is included.`);
     S = { i: 0, answers: { environments: ['Production'], capabilities: [''], infra: [], redundancy: {}, revenue: {}, cost: {} }, draft: null, parsing: false, parsedText: '', parseSource: '' };
     if (typeof closeBarMenus === 'function') closeBarMenus();
+    /* A key may have been added or dropped since the page loaded, and the infrastructure
+       stage promises which parser it will use before it uses it. */
+    loadLLMConfig().then(() => { if (S && STAGES[S.i].id === 'infrastructure') renderStage(); });
     renderStage();
   }
 
-  function showLLMConfig() {
-    const modal = document.querySelector('.modal');
-    if (!modal) return;
-    const configHTML = `
-      <div class="iv-config-panel" style="padding: 20px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; margin: 20px 0;">
-        <h3 style="margin-top: 0;">LLM API Key Configuration</h3>
-        <p>Configure an Anthropic API key to use the Claude LLM for faster, smarter parsing. Get a key at <strong>console.anthropic.com</strong>.</p>
-        <div class="form-grid">
-          <div class="field full">
-            <label>API Key (kept in memory, not saved to disk)</label>
-            <input id="iv-apikey" type="password" placeholder="sk-ant-..." style="font-family: monospace;" />
-          </div>
-        </div>
-        <div style="display: flex; gap: 10px; margin-top: 15px;">
-          <button type="button" class="inline-action" onclick="CSDM_IV.saveLLMConfig()">✓ Save & Test</button>
-          <button type="button" class="inline-action" onclick="CSDM_IV.clearLLMConfig()">✕ Clear Key</button>
-          <button type="button" class="inline-action" onclick="CSDM_IV.closeLLMConfig()">Close</button>
-        </div>
-        <div id="iv-config-status" style="margin-top: 15px; font-size: 0.9em;"></div>
-      </div>
-    `;
-    const existing = document.querySelector('.iv-config-panel');
-    if (existing) existing.remove();
-    const target = modal.querySelector('.modal-body') || modal;
-    const div = document.createElement('div');
-    div.innerHTML = configHTML;
-    target.insertBefore(div.firstChild, target.firstChild);
+  /* ---------- parser configuration (status bar) ---------- */
+  /* The key is posted to the server and held there in memory. It is never put in
+     localStorage: this is a sandbox people open on shared screens. */
+  function loadLLMConfig() {
+    return fetch('/api/interview/config')
+      .then(r => r.json())
+      .then(cfg => { llmConfig = cfg; paintParserButton(); return cfg; })
+      .catch(() => llmConfig);
+  }
 
-    getLLMConfig().then(config => {
-      const status = document.getElementById('iv-config-status');
-      if (config.apiKeyConfigured) {
-        status.innerHTML = `<span style="color: green;">✓ LLM is configured and ready to use</span>`;
+  function postLLMKey(apiKey) {
+    return fetch('/api/interview/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ apiKey })
+    }).then(r => r.json().catch(() => ({ success: false, error: `The server returned ${r.status}.` })))
+      .then(body => { if (body.config) { llmConfig = body.config; paintParserButton(); } return body; })
+      .catch(err => ({ success: false, error: err.message }));
+  }
+
+  /* The button itself is the indicator — you can see whether a key is loaded without
+     opening anything, because that is the thing you forget. */
+  function paintParserButton() {
+    const btn = document.getElementById('iv-parser-btn');
+    if (!btn) return;
+    const on = !!llmConfig.llmAvailable;
+    btn.classList.toggle('iv-parser-on', on);
+    btn.classList.toggle('iv-parser-off', !on);
+    btn.innerHTML = `<span class="iv-led"></span>Parser: ${on ? 'LLM' : 'Built-in'} &#9662;`;
+    btn.title = on
+      ? `Interview Mode will send infrastructure answers to ${llmConfig.model || 'the model'}.`
+      : `Interview Mode will use the built-in lexicon. Click to add an API key.`;
+    const panel = document.getElementById('iv-parser-panel');
+    if (panel && !panel.classList.contains('hidden')) paintParserPanel();
+  }
+
+  function paintParserPanel() {
+    const el = document.getElementById('iv-parser-state');
+    if (!el) return;
+    if (!llmConfig.sdkInstalled) {
+      el.className = 'explain-box explain-bad';
+      el.innerHTML = `<strong>The Anthropic SDK is not installed.</strong> Run <code>npm install @anthropic-ai/sdk</code> and restart the server. Until then the interview uses its built-in vocabulary.`;
+      return;
+    }
+    if (llmConfig.apiKeyConfigured) {
+      el.className = 'explain-box explain-good';
+      el.innerHTML = `<strong>A key is loaded${llmConfig.hint ? ` (${esc(llmConfig.hint)})` : ''}.</strong> ${llmConfig.source === 'env' ? `It came from the <code>ANTHROPIC_API_KEY</code> environment variable.` : `It is held in server memory and is lost when the server restarts.`} Infrastructure answers go to <strong>${esc(llmConfig.model || 'the model')}</strong>.`;
+      return;
+    }
+    el.className = 'explain-box';
+    el.innerHTML = `<strong>No key — the interview uses its built-in vocabulary.</strong> That is a supported way to run this: the lexicon knows the common words and asks you about the ambiguous ones. A key mainly buys you looser phrasing.`;
+  }
+
+  function buildParserMenu() {
+    const learnBtn = document.getElementById('learn-menu-btn');
+    if (!learnBtn || document.getElementById('iv-parser-btn')) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'menu-wrap';
+    wrap.innerHTML = `<button id="iv-parser-btn" class="iv-parser-off" onclick="CSDM_IV.toggleParser()"><span class="iv-led"></span>Parser &#9662;</button>
+      <div id="iv-parser-panel" class="bar-menu hidden">
+        <div id="iv-parser-state" class="explain-box"></div>
+        <div class="field full"><label>Anthropic API key</label>
+          <input id="iv-apikey" type="password" placeholder="sk-ant-..." autocomplete="off" spellcheck="false"></div>
+        <div class="path-step-help" style="margin-left:0">Create one at <strong>console.anthropic.com</strong> &rarr; API Keys. It is sent to this local server and kept in memory only — never written to disk, never returned to the browser.</div>
+        <div id="iv-parser-msg" class="muted"></div>
+        <div class="bar-menu-actions">
+          <button onclick="CSDM_IV.saveKey()">Save &amp; test</button>
+          <button onclick="CSDM_IV.clearKey()">Clear key</button>
+        </div>
+      </div>`;
+    learnBtn.parentElement.insertAdjacentElement('afterend', wrap);
+    paintParserButton();
+  }
+
+  /* Re-reads the server on every open: another tab, or a restart, may have changed it. */
+  function toggleParser() {
+    const panel = document.getElementById('iv-parser-panel');
+    const opening = panel && panel.classList.contains('hidden');
+    if (typeof toggleBarMenu === 'function') toggleBarMenu('iv-parser-panel');
+    if (!opening) return;
+    msg('');
+    paintParserPanel();
+    loadLLMConfig().then(paintParserPanel);
+    const input = document.getElementById('iv-apikey');
+    if (input) setTimeout(() => input.focus(), 40);
+  }
+
+  function msg(text, cls) {
+    const el = document.getElementById('iv-parser-msg');
+    if (el) el.innerHTML = `<span class="${cls || 'muted'}">${text}</span>`;
+  }
+
+  function saveKey() {
+    const input = document.getElementById('iv-apikey');
+    const key = (input.value || '').trim();
+    if (!key) return msg(`Paste a key first.`, 'iv-msg-bad');
+    msg(`Testing the key against the API…`);
+    postLLMKey(key).then(body => {
+      if (body.success) {
+        input.value = '';
+        msg(`${esc(body.message)}`, 'iv-msg-good');
+        paintParserPanel();
+        if (S) renderStage();
       } else {
-        status.innerHTML = `<span style="color: #666;">No API key configured — will use built-in lexicon fallback</span>`;
+        msg(`${esc(body.error || 'That did not work.')}`, 'iv-msg-bad');
       }
     });
   }
 
-  function saveLLMConfig() {
-    const key = (document.getElementById('iv-apikey').value || '').trim();
-    if (!key) return alert('Please enter an API key.');
-    const status = document.getElementById('iv-config-status');
-    status.innerHTML = `<span style="color: #999;">Testing…</span>`;
-    setLLMApiKey(key).then(result => {
-      if (result.success) {
-        status.innerHTML = `<span style="color: green;">✓ ${result.message}</span>`;
-        document.getElementById('iv-apikey').value = '';
-        setTimeout(() => renderStage(), 500);
-      } else {
-        status.innerHTML = `<span style="color: red;">✗ ${result.error}</span>`;
-      }
+  function clearKey() {
+    msg(`Clearing…`);
+    postLLMKey('').then(body => {
+      const input = document.getElementById('iv-apikey');
+      if (input) input.value = '';
+      msg(llmConfig.apiKeyConfigured ? `Cleared the key you typed — the environment variable is still set.` : `Cleared. Back to the built-in vocabulary.`, 'muted');
+      paintParserPanel();
+      if (S) renderStage();
     });
-  }
-
-  function clearLLMConfig() {
-    const status = document.getElementById('iv-config-status');
-    status.innerHTML = `<span style="color: #999;">Clearing…</span>`;
-    setLLMApiKey('').then(result => {
-      status.innerHTML = `<span style="color: #666;">API key cleared — will use built-in lexicon fallback</span>`;
-      document.getElementById('iv-apikey').value = '';
-      setTimeout(() => renderStage(), 500);
-    });
-  }
-
-  function closeLLMConfig() {
-    const existing = document.querySelector('.iv-config-panel');
-    if (existing) existing.remove();
   }
 
   window.CSDM_IV = {
@@ -845,8 +889,8 @@
     delCap: i => { readCapsLoose(); S.answers.capabilities.splice(i, 1); if (!S.answers.capabilities.length) S.answers.capabilities = ['']; renderStage(); },
     addTier: () => { readTiersLoose(); S.answers.consumers.tiers.push(''); renderStage(); setTimeout(() => { const r = document.querySelectorAll('.iv-tier'); if (r.length) r[r.length - 1].focus(); }, 60); },
     delTier: i => { readTiersLoose(); S.answers.consumers.tiers.splice(i, 1); if (!S.answers.consumers.tiers.length) S.answers.consumers.tiers = ['']; renderStage(); },
-    showLLMConfig, saveLLMConfig, clearLLMConfig, closeLLMConfig,
-    _state: () => S, _draft: () => buildDraft()
+    saveKey, clearKey, toggleParser, reloadConfig: loadLLMConfig,
+    _state: () => S, _draft: () => buildDraft(), _config: () => llmConfig
   };
   window.CSDM_START_INTERVIEW = start;
 
@@ -864,6 +908,8 @@
       b.onclick = () => { if (typeof hideMenus === 'function') hideMenus(); start(); };
       canvas.insertBefore(b, canvas.firstChild);
     }
+    buildParserMenu();
+    loadLLMConfig();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', addLaunchers); else addLaunchers();
 })();
