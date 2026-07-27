@@ -52,9 +52,72 @@ A second legal path also works:
 infra ▶ Application Service ◀──Depends on── Service Offering ◀──Offers── Business Service ──Provides──▶ Business Capability
 ```
 
-**Implication:** the interview MUST create the `Business Application` + `Business Capability`
-pair and wire both edges before infrastructure, or the money never lights up. The **Ownership**
-and **Capability** stages therefore precede **Infrastructure**.
+**Implication:** the model MUST contain the `Business Application` + `Business Capability` pair
+with both edges wired, or the money never lights up.
+
+This is a constraint on the **draft**, not on the question order. `buildDraft()` runs after every
+stage has been answered, so it wires that pair whenever both answers exist — which is why
+**Infrastructure** can be asked first (see §3) without breaking revenue. What the constraint does
+mean is that skipping **Ownership** or **Capability** silently kills revenue-at-risk, so neither
+may be skipped quietly: `skip()` states the exact consequence before accepting it, and `gaps()`
+repeats it on the review screen and again in the payoff.
+
+### 2.1a `level` is not a hosting order
+
+`level` is depth from the **business**, not the hosting stack. `Application Service` 3,
+`Application` 5, `VM` 6, `Database Instance` 8, `Storage Volume` 9, `Physical Host` 11.
+
+A database is level 8 and a VM is level 6 — yet the database runs **on** the VM. Any algorithm
+that parents by `level` therefore gets every data, storage, network and security class backwards.
+This was a real defect: `buildDraft()` classed `Database Instance` as a non-spine "leaf", hung it
+off the Application Service, and never emitted the hosting edge at all.
+
+**A non-hosting CI needs two edges, and they point in opposite directions on purpose:**
+
+```
+Application Service --Depends on--> Database Instance   # DB outage travels UP to the business
+Database Instance   --Runs on-->    VM                  # VM outage travels DOWN to the DB
+```
+
+`csdmData.json` carries both (`cr-order-engine --Uses--> cr-orders-db`,
+`cr-orders-db --Runs on--> cr-web-vm-01`). With only the first, failing a VM leaves the database
+on it untouched — the cascade is confidently wrong. With only the second, a database outage
+reaches nothing. `buildDraft()` now emits both, and hosting classes (`HOSTING` ∪ `RUNTIME`) stack
+on each other via `hostsAbove()`, which returns **every** node in the nearest shallower hosting
+layer — two VMs in one rack are both in the rack.
+
+### 2.1b The prescribed chain (Figure 16)
+
+Figure 16 of the CSDM 5 white paper shows **no direct edge from Application Service to
+Infrastructure CI**. The prescribed chain puts `Application` in between:
+
+```
+Application Service --[Depends on::Used by]--> Application --[Runs On::Runs]--> Infrastructure CI (*various)
+```
+
+The schema permits the shortcut (`Application Service -> Infrastructure CI` = `Depends on`,
+`Runs on`) and that is deliberate — real Service Mapping does associate CIs straight to the
+service via `svc_ci_assoc`. But it must not be the *default* the interview emits. Two things
+enforce that:
+
+- the `appserver` lexicon trap offers **The software itself → `Application`**, so the middle
+  tier is reachable at all (before it existed, "app server" always hit the bare `server` trap
+  and only ever produced Physical Host / VM / Compute Node);
+- **pass 4** of the infrastructure builder connects the service directly to a box *only* when
+  nothing else already reaches it.
+
+Known divergences from Figure 16, deliberate or open:
+
+| Figure 16 | This app | Status |
+|---|---|---|
+| Business Application `[Uses::Used by]` Application Service | `Instantiates` → `Instantiates::Instantiated by` | **open** — the ServiceNow half of the dual-naming is wrong for this pair; fixing it is a schema change plus a `migrations.js` label migration |
+| `Ref: "Published as"`, `Ref: "Is part of"` | modelled as `Offers` / `Contains` edges | accepted — they are reference fields in CSDM, not `cmdb_rel_ci` rows, so they would not really propagate impact |
+| Value Stream, Business Process, SDLC Component, API, Connected Device, Network Function, Dynamic CI Group | absent | gap — `Business Process` (`Operationalizes`) and `API` (`Receives data from`) are the two worth adding |
+
+This matches CSDM 5.0's layered Digital System Model, and the Service Delivery domain is
+explicitly the one "historically used by IT Operations Management such as Service Mapping and
+ServiceNow Discovery" (CSDM 5 white paper, p.36) — tools that emit chained, tier-by-tier
+dependency maps rather than a flat star from the Application Service.
 
 ### 2.2 Redundancy is scope-ranked
 
@@ -110,12 +173,41 @@ it is a canonical redundancy device and no longer reads as an automatic SPOF.
 Stages run in this order. Each stage name is also its key in the answer store:
 
 ```
-Anchor → Environments → Ownership → Capability → Consumers → Infrastructure → Resilience → Money → Review
+Infrastructure → Anchor → Environments → Ownership → Capability → Consumers → Resilience → Money → Review
 ```
 
-`Consumers` presents its sub-questions on one skippable screen. `Infrastructure` parses one
-free-text box and auto-nests (see that stage for why it is not iterative). `Review` has three
-parts: review the proposal, fire the payoff, the closing question.
+The order is declared in one place — `const ORDER` in `interview.js`, immediately after
+`STAGE_DEFS`. The definition order of the stage objects is deliberately *not* the question order;
+change `ORDER` alone to re-sequence.
+
+**Why Infrastructure leads.** People can describe what they have long before they can name a
+capability. Opening on "what does it all run on?" asks for something the user already knows, and
+every later question then has concrete nouns to refer back to. The revenue spine is unaffected
+because the draft is built once, at the end (§2.1).
+
+Two consequences of moving it first, both handled:
+
+- The **self-reference drop**. Infrastructure is parsed before the service is named, so
+  "the billing portal runs on two app servers" can turn the service into a dependency of itself.
+  `dropSelfTerms()` runs on the Anchor and Ownership reads, removes any infra term matching those
+  names, and *announces it on the next screen* — design rule 1 forbids doing that silently.
+- **Anchor-less drafts.** `buildDraft()` tolerates a null `prodId`, `appId` and empty `capIds`.
+  Infrastructure then self-nests along the hosting spine and the topmost node is emitted as an
+  orphan claim explaining that nothing above it can carry a failure.
+
+**Skipping.** Every stage is skippable. `Skip this` does not advance — it renders the stage's
+`cost()`, which names the features that stop working (blast radius, revenue-at-risk, Coach,
+Impact Analysis, the Portfolio Dashboard rollup), and only then offers `Skip it anyway` against a
+primary `Go back and answer it`. Going Back into a skipped stage un-skips it.
+
+`gaps()` recomputes what is missing **from the answers, not from the skip flags**, so pressing
+Next on an empty stage reports identically to pressing Skip. It feeds `skipSummary()` on both the
+review screen and the payoff. Skipping **Anchor** additionally hides **Environments** via that
+stage's `hidden()` predicate — there is nothing to have copies of.
+
+`Consumers` presents its sub-questions on one screen. `Infrastructure` parses one free-text box
+and auto-nests (see that stage for why it is not iterative). `Review` has three parts: review the
+proposal, fire the payoff, the closing question.
 
 Notation per question:
 

@@ -14,11 +14,16 @@
   /* Everything else is a dependency of the SERVICE, not of the box the service runs on.
      Hanging a database off a VM is actively wrong: a redundant VM pair would then "absorb"
      a database outage, and the cascade would never reach the business at all. */
+  /* `rank` is REDUNDANCY_SCOPE_RANK in app.js. A node absorbs a failure only when its rank is
+     at least the origin's FAILURE_DOMAIN_RANK (Physical Host 1, Rack 2, Data Center 3, AZ 4,
+     Cloud Region 5) — so the wording has to name the precondition, not just the ceiling. A pair
+     of VMs in ONE rack does not survive that rack; rank 2 is a claim that the pair is split
+     across two. Nothing reaches 5, deliberately. */
   const REDUNDANCY = [
-    { v: 'Single instance', label: `There is only one of it`, survives: `nothing — a single point of failure` },
-    { v: 'Redundant pair', label: `There is a second one standing by`, survives: `up to losing a rack` },
-    { v: 'HA cluster', label: `A cluster that tolerates losing a member`, survives: `up to losing an availability zone` },
-    { v: 'Auto-scaling', label: `It scales itself out automatically`, survives: `up to losing an availability zone` }
+    { v: 'Single instance', rank: 0, label: `There is only one of it`, survives: `nothing — anything under it takes it down` },
+    { v: 'Redundant pair', rank: 2, label: `A second one on standby, in a different rack`, survives: `losing a host or a rack — but not a data centre` },
+    { v: 'HA cluster', rank: 4, label: `A cluster that keeps serving when a member dies, spread across zones`, survives: `losing a host, rack, data centre or zone — but not a region` },
+    { v: 'Auto-scaling', rank: 4, label: `It replaces lost capacity by itself, across zones`, survives: `losing a host, rack, data centre or zone — but not a region` }
   ];
   let S = null;
   /* Last known server answer. The stage bodies render synchronously, so the status has
@@ -41,6 +46,15 @@
   function edgeExists(f, t, l) { return model().edges.some(e => e.from === f && e.to === t && (e.label || e.relationship) === l); }
   function dedupe(list) { const seen = new Set(), out = []; list.forEach(v => { const k = norm(v); if (v && !seen.has(k)) { seen.add(k); out.push(v); } }); return out; }
   function mkey(type, label) { return `${type}|${norm(label)}`; }
+  /* A quantified term becomes ONE CI carrying a redundancy value, so its name has to read as
+     one thing — a node called "VMs" sitting next to one called "VM" is the same machine twice
+     with no way for the user to tell them apart. Only applied to quantified terms, and never
+     to a label that is already a class name. */
+  function singular(v) {
+    const s = String(v ?? '').trim();
+    if (!/s$/i.test(s) || /(?:ss|us|is|as)$/i.test(s)) return s;
+    return /ies$/i.test(s) ? s.replace(/ies$/i, 'y') : s.replace(/s$/i, '');
+  }
   function hasField(type, key) { try { return (schema().getMetadataFields(type) || []).some(f => f.key === key); } catch (e) { return false; } }
   function canRedundancy(type) { return typeof supportsRedundancy === 'function' ? supportsRedundancy(type) : hasField(type, 'redundancy'); }
   function money(v) { return typeof formatMoney === 'function' ? formatMoney(v) : `$${Number(v || 0).toFixed(2)}`; }
@@ -58,10 +72,13 @@
      whole sentence resolves rather than collapsing onto whichever class matched first. */
   function parseInfra(text) {
     const self = [S.answers.anchor, S.answers.ownership].filter(Boolean).map(norm);
+    /* runsOn/dependsOn come from the words the splitter broke on — the same fields the LLM
+       fills, so buildDraft() treats a stated pairing identically whichever parser produced it. */
+    const hints = m => ({ runsOn: m.runsOn || '', dependsOn: m.dependsOn || [] });
     const out = lex().scan(text).map(m => {
-      if (m.kind === 'class') return { term: m.term, label: m.label, type: m.type, why: m.why, phrase: m.phrase, generic: m.generic, count: m.count };
-      if (m.kind === 'trap') return { term: m.term, label: m.label, type: '', why: m.trap.why, trapKey: m.trap.key, ask: m.trap.ask, options: m.trap.options, phrase: m.phrase, generic: m.generic, count: m.count };
-      return { term: m.term, label: m.label, type: '', why: `I did not recognise this word, so you tell me what it is.`, unknown: true, generic: false, count: m.count };
+      if (m.kind === 'class') return Object.assign({ term: m.term, label: m.label, type: m.type, why: m.why, phrase: m.phrase, generic: m.generic, count: m.count }, hints(m));
+      if (m.kind === 'trap') return Object.assign({ term: m.term, label: m.label, type: '', why: m.trap.why, trapKey: m.trap.key, ask: m.trap.ask, options: m.trap.options, phrase: m.phrase, generic: m.generic, count: m.count }, hints(m));
+      return Object.assign({ term: m.term, label: m.label, type: '', why: `I did not recognise this word, so you tell me what it is.`, unknown: true, generic: false, count: m.count }, hints(m));
     /* The service being described is not a dependency of itself. */
     }).filter(t => !self.includes(norm(t.label)) && !self.includes(norm(t.term)));
     return out.slice(0, 40);
@@ -73,12 +90,25 @@
   function normalizeInfra() {
     const seen = new Map(), key = t => `${t.type || t.trapKey || 'u'}|${norm(t.label)}`;
     const free = (t, l) => l && !seen.has(`${t.type || t.trapKey || 'u'}|${norm(l)}`);
+    /* Fold the plural back to one name FIRST, so "two VMs" and "a VM" collide below and become
+       a single CI with a count — rather than surviving as "VMs" and "VM", which is the same
+       machine on the canvas twice with only one of them carrying the redundancy answer. */
+    (S.answers.infra || []).forEach(t => {
+      if (t.skip || !t.label || (t.count || 1) < 2) return;
+      if (t.type && schema().nodeTypes[t.label]) return;
+      const one = singular(t.label);
+      if (one && norm(one) !== norm(t.label)) { t.label = one; if (t.type) t.generic = norm(one) === norm(t.type); }
+    });
     (S.answers.infra || []).forEach(t => {
       if (t.skip) return;
       const prev = seen.get(key(t));
       if (!prev) { seen.set(key(t), t); return; }
       /* The same words twice is one thing said twice — keep the larger count. */
       if (norm(prev.term) === norm(t.term)) { prev.count = Math.max(prev.count || 1, t.count || 1); t.skip = true; return; }
+      /* Two terms that both fell back to the bare class name are not two distinguishable
+         things — "VM" and "VM 2" is a distinction the user never made. Merge them and keep the
+         larger count, so the quantity lands in the redundancy field where it belongs. */
+      if (prev.generic && t.generic) { prev.count = Math.max(prev.count || 1, t.count || 1); t.skip = true; return; }
       const mine = lex().strip(t.term), theirs = lex().strip(prev.term);
       if (free(t, mine) && norm(mine) !== norm(t.label)) { t.label = mine; t.generic = false; seen.set(key(t), t); return; }
       /* "two app servers" and "a VM" both resolve to VM, and it is the earlier one that has
@@ -119,9 +149,64 @@
     }));
   }
 
-  /* Several traps can match one phrase ("app servers" hits both `app` and `server`).
-     The model's own candidate list says which question it was actually unsure about,
-     so that wins; failing that the head noun does, as in the lexicon. */
+  /* ---------- capture ---------- */
+  /* The whole point is the pairing: `input` is exactly what was typed, `terms` is what the
+     parser made of it, `built` is what buildDraft() produced, and `expected` is what the user
+     says it should have been. Diffing those is how the draft builder gets tuned — guessing
+     from a description of the output never works. */
+  function readExpected() { const el = document.getElementById('iv-expected'); if (el) S.expected = el.value || ''; }
+  function captureRecord(phase, d, extra) {
+    const a = S.answers;
+    const name = id => { const n = d.nodes.concat(d.reusedNodes).find(x => x.id === id); return n ? `${n.label} [${n.type}]` : id; };
+    return Object.assign({
+      phase,
+      parser: S.parseSource || (llmConfig.llmAvailable ? { llm: true, model: llmConfig.model, note: 'not yet run' } : { llm: false, note: 'built-in vocabulary' }),
+      input: {
+        infrastructure: a.infraText || '',
+        anchor: a.anchor || '', application: a.ownership || '', owner: a.owner || '',
+        environments: a.environments || [],
+        capabilities: (a.capabilities || []).filter(c => String(c).trim()),
+        capParent: a.capParent || null, consumers: a.consumers || null,
+        redundancy: a.redundancy || {}, revenue: a.revenue || {}, cost: a.cost || {}
+      },
+      skipped: Object.keys(S.skipped || {}),
+      selfDropped: S.notes.selfDropped || [],
+      terms: (a.infra || []).map(t => ({
+        term: t.term, phrase: t.phrase || '', label: t.label, type: t.type || null,
+        trapKey: t.trapKey || null, unknown: !!t.unknown, skipped: !!t.skip, selfDropped: !!t.selfDrop,
+        count: t.count || 1, runsOn: t.runsOn || '', dependsOn: t.dependsOn || [], why: t.why
+      })),
+      built: {
+        newNodes: d.nodes.map(n => `${n.label} [${n.type}]`),
+        reusedNodes: d.reusedNodes.map(n => `${n.label} [${n.type}]`),
+        edges: d.edges.map(e => `${name(e.from)} --${e.label}--> ${name(e.to)}`),
+        unconnected: d.claims.filter(c => c.orphan).map(c => c.toLabel)
+      },
+      expected: S.expected || ''
+    }, extra || {});
+  }
+  function capture(phase, d, extra) {
+    return fetch('/api/interview/capture', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(captureRecord(phase, d, extra))
+    }).then(r => r.json()).catch(err => ({ success: false, error: err.message }));
+  }
+  function saveComparison() {
+    readExpected();
+    const btn = document.getElementById('iv-save-cmp');
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+    capture('review', S.draft || buildDraft()).then(r => {
+      if (!btn) return;
+      btn.disabled = false;
+      btn.textContent = r && r.success ? `Saved ${r.file}` : `Could not save — ${(r && r.error) || 'unknown error'}`;
+    });
+  }
+
+  /* Several traps can match one phrase ("app servers" hits `app`, `server` AND `appserver`).
+     The model's own candidate list says which question it was actually unsure about, so that
+     wins. Failing that the LONGEST match wins, matching how the lexicon resolves overlaps in
+     rawMatches() — scoring by m.index instead let the bare `server` inside "app server" win,
+     which is how the Application tier became unreachable. */
   function pickTrap(term, candidates) {
     const t = String(term || ''), cands = candidates || [];
     let best = null, bestScore = -1;
@@ -129,7 +214,7 @@
       const m = t.match(tr.pattern);
       if (!m) return;
       const overlap = (tr.options || []).filter(o => o.type && cands.includes(o.type)).length;
-      const score = overlap * 1000 + m.index;
+      const score = overlap * 1000 + m[0].length * 10 + m.index;
       if (score > bestScore) { bestScore = score; best = tr; }
     });
     return best;
@@ -145,14 +230,14 @@
       const known = it.type && schema().nodeTypes[it.type];
       if (known && !it.ambiguous) {
         const label = it.label || it.type;
-        return { term, label, type: it.type, why: it.why || `The model chose ${it.type}.`, phrase: it.sourcePhrase, generic: norm(label) === norm(it.type), count: it.count || 1, redundancy: it.redundancy };
+        return { term, label, type: it.type, why: it.why || `The model chose ${it.type}.`, phrase: it.sourcePhrase, generic: norm(label) === norm(it.type), count: it.count || 1, redundancy: it.redundancy, runsOn: it.runsOn || '', dependsOn: Array.isArray(it.dependsOn) ? it.dependsOn : [] };
       }
       /* Prefer the hand-written trap: its wording is the teaching, not a paraphrase. */
       const trap = pickTrap(term, it.candidates);
-      if (trap) return { term, label: '', type: '', why: trap.why, trapKey: trap.key, ask: trap.ask, options: trap.options, phrase: it.sourcePhrase, generic: true, count: it.count || 1, redundancy: it.redundancy };
+      if (trap) return { term, label: '', type: '', why: trap.why, trapKey: trap.key, ask: trap.ask, options: trap.options, phrase: it.sourcePhrase, generic: true, count: it.count || 1, redundancy: it.redundancy, runsOn: it.runsOn || '', dependsOn: Array.isArray(it.dependsOn) ? it.dependsOn : [] };
       const cands = (it.candidates || []).filter(c => schema().nodeTypes[c]);
-      if (cands.length > 1) return { term, label: '', type: '', why: it.why || `These words map to more than one class, so I will not guess.`, trapKey: `llm:${norm(term)}`, ask: `Which of these is “${term}”?`, options: cands.map(c => ({ label: c, type: c })), phrase: it.sourcePhrase, generic: true, count: it.count || 1, redundancy: it.redundancy };
-      return { term, label: it.label || '', type: '', why: it.why || `I did not recognise this word, so you tell me what it is.`, unknown: true, phrase: it.sourcePhrase, generic: false, count: it.count || 1, redundancy: it.redundancy };
+      if (cands.length > 1) return { term, label: '', type: '', why: it.why || `These words map to more than one class, so I will not guess.`, trapKey: `llm:${norm(term)}`, ask: `Which of these is “${term}”?`, options: cands.map(c => ({ label: c, type: c })), phrase: it.sourcePhrase, generic: true, count: it.count || 1, redundancy: it.redundancy, runsOn: it.runsOn || '', dependsOn: Array.isArray(it.dependsOn) ? it.dependsOn : [] };
+      return { term, label: it.label || '', type: '', why: it.why || `I did not recognise this word, so you tell me what it is.`, unknown: true, phrase: it.sourcePhrase, generic: false, count: it.count || 1, redundancy: it.redundancy, runsOn: it.runsOn || '', dependsOn: Array.isArray(it.dependsOn) ? it.dependsOn : [] };
     }).filter(t => !self.includes(norm(t.label)) && !self.includes(norm(t.term))).slice(0, 40);
   }
 
@@ -189,43 +274,72 @@
     });
   }
 
+  /* Infrastructure is answered before the service is named, so a sentence like
+     “the billing portal runs on two app servers” can make the service a dependency of
+     itself. Whatever is later named as the anchor or the application gets pulled back
+     out of the term list — and said out loud, because a silent drop is a silent guess. */
+  function dropSelfTerms() {
+    const self = [S.answers.anchor, S.answers.ownership].filter(Boolean).map(norm);
+    if (!self.length) return;
+    (S.answers.infra || []).forEach(t => {
+      if (t.skip || !(self.includes(norm(t.label)) || self.includes(norm(t.term)))) return;
+      t.skip = true; t.selfDrop = true;
+      const w = t.term || t.label;
+      S.notes.selfDropped = S.notes.selfDropped || []; S.notes.selfDroppedNew = S.notes.selfDroppedNew || [];
+      if (!S.notes.selfDropped.includes(w)) { S.notes.selfDropped.push(w); S.notes.selfDroppedNew.push(w); }
+    });
+  }
+
   /* ---------- stages ---------- */
-  const STAGES = [
+  /* Definition order below is NOT question order — see ORDER after the array. */
+  const STAGE_DEFS = [
     {
-      id: 'anchor', title: `What breaks?`,
-      lead: `We start where outages start, not at the top of a diagram. One question:`,
+      id: 'anchor', title: `What breaks?`, skippable: true,
+      lead: () => { const n = (S.answers.infra || []).filter(t => t.type && !t.skip).length;
+        return n ? `You have given me ${n} thing${n === 1 ? '' : 's'}. Not one of them is what somebody rings you about — so name that now.` : `Outages start here, not at the top of a diagram. One question:`; },
       ask: `What is the one thing that, if it broke right now, someone would call you about?`,
       hint: `Use whatever you actually call it — “the billing portal”, “Charles River”, “the claims system”.`,
+      clear: () => { S.answers.anchor = ''; },
+      cost: () => `There will be no <strong>Application Service</strong> — the only layer failure simulation can start from. Everything you listed a moment ago lands on the canvas with nothing above it to carry a failure upward, so blast radius, revenue-at-risk and Impact Analysis all have no starting point.`,
       body: () => `<div class="field full"><label>Name it</label><input id="iv-anchor" placeholder="e.g. Billing Portal" value="${esc(S.answers.anchor || '')}" list="iv-anchor-list">
         <datalist id="iv-anchor-list">${existing('Application Service').map(n => `<option>${esc(n.label)}</option>`).join('')}</datalist></div>
-        <div class="path-step-help">Whatever you name here becomes an <strong>Application Service</strong> — the layer that actually runs and can fail. It is the only layer failure simulation can start from, which is why we ask for it first.</div>`,
-      read: () => { const v = (document.getElementById('iv-anchor').value || '').trim(); if (!v) return `Give it a name so we have something to hang the model on.`; S.answers.anchor = v; }
+        <div class="path-step-help">Whatever you name here becomes an <strong>Application Service</strong> — the layer that actually runs and can fail. It is the only layer failure simulation can start from, which is why everything you just listed has to hang off it.</div>`,
+      read: () => { const v = (document.getElementById('iv-anchor').value || '').trim(); if (!v) return `Give it a name so we have something to hang the model on.`; S.answers.anchor = v; dropSelfTerms(); }
     },
     {
-      id: 'environments', title: `How many copies of it are running?`,
+      id: 'environments', title: `How many copies of it are running?`, skippable: true,
+      /* Nothing to copy if there is no service — the question would be meaningless. */
+      hidden: () => !!S.skipped.anchor,
       lead: () => `You said <strong>${esc(S.answers.anchor)}</strong>.`,
       ask: `Does it run in more than one place?`,
       hint: `Tick every environment that exists today. Production is assumed.`,
+      clear: () => { S.answers.environments = ['Production']; },
+      cost: () => `Production only. Staging, test and DR will not be in the model, so an outage in one cannot be told apart from an outage in another — which is the entire reason they are separate Application Services.`,
       body: () => `<div class="form-grid">${ENVS.map((e, i) => `<div class="field"><label><input type="checkbox" class="iv-env" value="${esc(e)}" ${(S.answers.environments || ['Production']).includes(e) ? 'checked' : ''} ${i === 0 ? 'disabled' : ''}> ${esc(e)}</label></div>`).join('')}</div>
         <div class="path-step-help">Each environment becomes its <strong>own Application Service</strong> — not a copy of one. That is deliberate: when staging falls over, production must not look degraded.</div>`,
       read: () => { S.answers.environments = [...document.querySelectorAll('.iv-env')].filter(c => c.checked || c.disabled).map(c => c.value); if (!S.answers.environments.length) S.answers.environments = ['Production']; }
     },
     {
-      id: 'ownership', title: `Who owns and funds it?`,
-      lead: () => `${esc(S.answers.anchor)} is running in ${S.answers.environments.length} place${S.answers.environments.length > 1 ? 's' : ''}. Now the part people get wrong most often.`,
+      id: 'ownership', title: `Who owns and funds it?`, skippable: true,
+      lead: () => { const n = (S.answers.environments || ['Production']).length;
+        return S.answers.anchor ? `${esc(S.answers.anchor)} is running in ${n} place${n > 1 ? 's' : ''}. Now the part people get wrong most often.` : `Now the part people get wrong most often.`; },
       ask: `What is this called on a budget line or a roadmap? Who supports it?`,
       hint: `Often the same word you just used — but sometimes the vendor or product name.`,
+      clear: () => { S.answers.ownership = ''; S.answers.owner = ''; },
+      cost: () => `No <strong>Business Application</strong>. The chain from your infrastructure stops dead at the running service and never reaches a business activity, so revenue-at-risk stays ${esc(money(0))}/hour however much money you enter afterwards, and Impact Analysis can only ever report technical blast radius.`,
       body: () => `<div class="form-grid"><div class="field full"><label>Product / application name</label><input id="iv-app" placeholder="e.g. Billing Platform" value="${esc(S.answers.ownership || '')}" list="iv-app-list">
         <datalist id="iv-app-list">${existing('Business Application').map(n => `<option>${esc(n.label)}</option>`).join('')}</datalist></div>
         <div class="field full"><label>Support group (optional)</label><input id="iv-owner" placeholder="e.g. Revenue Systems Team" value="${esc(S.answers.owner || '')}"></div></div>
-        <div class="path-step-help">This is the <strong>Business Application</strong> — the thing you fund, own, and put on a roadmap. There is exactly <em>one</em>. The running copies from the last question are Application Services; there are ${S.answers.environments.length}. One <em>Instantiates</em> the others.<br><span class="ps-rule">Rule:</span> ${esc(ruleText('Business Application', 'Application Service', 'Instantiates'))}</div>`,
-      read: () => { const v = (document.getElementById('iv-app').value || '').trim(); if (!v) return `Name the funded product, even if it matches what you typed earlier.`; S.answers.ownership = v; S.answers.owner = (document.getElementById('iv-owner').value || '').trim(); }
+        <div class="path-step-help">This is the <strong>Business Application</strong> — the thing you fund, own, and put on a roadmap. There is exactly <em>one</em>. ${S.answers.anchor ? `The running copies from the last question are Application Services; there are ${(S.answers.environments || ['Production']).length}. One <em>Instantiates</em> the others.` : `You skipped the running service, so there are no Application Services for it to instantiate — this will sit on the canvas on its own.`}<br><span class="ps-rule">Rule:</span> ${esc(ruleText('Business Application', 'Application Service', 'Instantiates'))}</div>`,
+      read: () => { const v = (document.getElementById('iv-app').value || '').trim(); if (!v) return `Name the funded product, even if it matches what you typed earlier.`; S.answers.ownership = v; S.answers.owner = (document.getElementById('iv-owner').value || '').trim(); dropSelfTerms(); }
     },
     {
-      id: 'capability', title: `What would the business be unable to do?`,
+      id: 'capability', title: `What would the business be unable to do?`, skippable: true,
       lead: () => `The question that makes the money work.`,
       ask: `If ${'${app}'} were down all day, what could the business no longer do?`,
       hint: `Name activities, not systems. Add a row for everything that would stop.`,
+      clear: () => { S.answers.capabilities = []; S.answers.capParent = null; },
+      cost: () => `No <strong>Business Capability</strong> — and that is the only class in CSDM that can carry a revenue figure. Revenue-at-risk will read ${esc(money(0))}/hour whatever else you fill in, the money question after this will have nothing to ask about, and cost impact in Impact Analysis will have infrastructure cost with no business value to weigh it against.`,
       body: () => {
         const caps = S.answers.capabilities && S.answers.capabilities.length ? S.answers.capabilities : [''];
         return `<div id="iv-cap-rows">${caps.map((c, i) => `<div class="field full"><label>Business activity${caps.length > 1 ? ` ${i + 1}` : ''}</label>
@@ -254,10 +368,12 @@
       }
     },
     {
-      id: 'consumers', title: `Who consumes it, and what did you promise?`,
+      id: 'consumers', title: `Who consumes it, and what did you promise?`, skippable: true,
       lead: () => `The commercial layer. Skip it if nobody outside your team consumes this.`,
       ask: `Who consumes ${'${app}'} — and what was promised?`,
       hint: `All optional. Leave the consumer blank to skip this whole layer.`,
+      clear: () => { S.answers.consumers = null; },
+      cost: () => `No <strong>Business Service</strong>, <strong>Service Offering</strong> or <strong>Service Commitment</strong>. An outage can be reported as broken infrastructure but never as a broken promise, and the second path by which a failure becomes a business consequence — the offering that <em>Depends on</em> the running service — will not exist.`,
       body: () => {
         const c = S.answers.consumers || {}, tiers = c.tiers && c.tiers.length ? c.tiers : [''];
         return `<div class="form-grid"><div class="field"><label>Who consumes it</label>
@@ -288,10 +404,14 @@
       }
     },
     {
-      id: 'infrastructure', title: `What does it sit on?`,
-      lead: () => `Now down the stack. ${esc(S.answers.anchor)} has to run on something.`,
-      ask: `What does ${'${anchor}'} run on, or need to work?`,
+      id: 'infrastructure', title: `What is it running on?`, skippable: true,
+      lead: () => S.answers.anchor
+        ? `Back down the stack. <strong>${esc(S.answers.anchor)}</strong> has to run on something.`
+        : `We start at the bottom, with the part you can actually point at. Everything else in this interview hangs off what you name here.`,
+      ask: () => S.answers.anchor ? `What does <strong>${esc(S.answers.anchor)}</strong> run on, or need to work?` : `What does it all run on?`,
       hint: `List it or just say it in a sentence — commas, new lines, or plain prose like “two app servers that connect to a database on a VM”. I will pull out each thing, sort out the CSDM classes, and show you my reasoning.`,
+      clear: () => { S.answers.infra = []; S.answers.infraText = ''; S.parsedText = ''; S.parseSource = ''; },
+      cost: () => `Nothing lands underneath the service, so there is <strong>nothing that can fail</strong>. Blast radius is a single node, Coach finds no single points of failure because there are no components to be single, and the Portfolio Dashboard has no cost or resilience to roll up. You can add it later with the Topology builder.`,
       body: () => {
         if (S.parsing) return `<div class="explain-box"><strong>Reading what you wrote…</strong> I am pulling out each thing you named and working out which CSDM class it is. Anything genuinely ambiguous I will hand back to you rather than guess.</div>
           ${llmConfig.llmAvailable ? `<div class="iv-source iv-source-llm"><span class="iv-led"></span>Asking <strong>${esc(llmConfig.model || 'the model')}</strong>… if it fails I fall back to the built-in vocabulary.</div>` : `<div class="iv-source iv-source-lex"><span class="iv-led"></span>Using the <strong>built-in vocabulary</strong>.</div>`}`;
@@ -328,8 +448,15 @@
             const t = S.answers.infra[Number(s.dataset.idx)]; if (!t) return;
             if (s.value === 'SKIP') { t.skip = true; return; }
             t.type = s.value;
-            /* A trapped term never named anything of its own, so the class you picked is the label. */
-            if (!t.label || t.generic) { t.label = s.value; t.generic = true; }
+            /* Keep the user's own words for the name where they said anything at all — a node
+               called "App Server" reads better than a second one called "VM", and quoting them
+               back is the whole teaching method. Only fall back to the class name when they
+               named nothing ("a server" -> Physical Host). */
+            if (!t.label || t.generic) {
+              const own = lex().strip(t.term || '');
+              t.label = own && norm(own) !== norm(s.value) ? own : s.value;
+              t.generic = norm(t.label) === norm(s.value);
+            }
             t.why = `${t.why} You chose ${s.value}.`;
           });
           normalizeInfra();
@@ -351,10 +478,15 @@
       }
     },
     {
-      id: 'resilience', title: `What survives what?`,
+      id: 'resilience', title: `What survives what?`, skippable: true,
       lead: () => `This is the single most valuable answer in the whole interview.`,
       ask: `For each of these — what is the biggest loss it survives?`,
       hint: `Without this every node reads as a single point of failure, and the blast radius means nothing.`,
+      /* Clear what was answered ON this screen, then put back what the user's own words
+         already said. "two app servers" is a statement, not an unanswered question — wiping
+         it turned a redundant pair into a single point of failure behind their back. */
+      clear: () => { S.answers.redundancy = {}; seedRedundancy(); },
+      cost: () => `Every node reads as a <strong>single point of failure</strong>. The cascade paints the whole model red because nothing absorbs anything, Coach reports SPOFs across the board, and the Resilience/What-If toggle has nothing to toggle.`,
       body: () => {
         const d = buildDraft(), rows = d.nodes.concat(d.reusedNodes).filter(n => canRedundancy(n.type));
         /* Only infra classes are worth flagging — an Application Service having no redundancy
@@ -365,25 +497,33 @@
         return `<table class="iv-grid"><thead><tr><th>What</th><th>Biggest loss it survives</th></tr></thead><tbody>
             ${rows.map(n => { const k = mkey(n.type, n.label), cur = (S.answers.redundancy || {})[k] || '';
               return `<tr><td><strong>${esc(n.label)}</strong><br><span class="muted">${esc(n.type)}</span></td>
-                <td><select class="iv-red" data-k="${esc(k)}">${REDUNDANCY.map(o => `<option value="${esc(o.v)}" ${cur === o.v ? 'selected' : ''}>${esc(o.label)} &mdash; survives ${esc(o.survives)}</option>`).join('')}</select></td></tr>`; }).join('')}
+                <td><select class="iv-red" data-k="${esc(k)}">${REDUNDANCY.map(o => `<option value="${esc(o.v)}" ${cur === o.v ? 'selected' : ''}>${esc(o.label)} &mdash; survives ${esc(o.survives)}${o.rank ? ` (rank ${o.rank})` : ''}</option>`).join('')}</select></td></tr>`; }).join('')}
           </tbody></table>
-          <div class="path-step-help">These are not free-text: they map onto the scope ranks the cascade engine uses. A <em>standby pair</em> ranks 2 and absorbs a rack loss; an <em>HA cluster</em> ranks 4 and absorbs an availability zone. Nothing here ranks high enough to absorb a <strong>whole cloud region</strong> — which we will come back to at the end.</div>
+          <div class="path-step-help">These are not free-text: each one <em>is</em> a scope rank in the cascade engine. A failure origin also has a rank — one machine (host, VM, container) 1, Rack 2, Data Center 3, Availability Zone 4, Cloud Region 5 — and a node absorbs the failure only when its own rank is <strong>at least</strong> the origin&rsquo;s. So a <em>standby pair</em> (rank 2) absorbs a rack, but a data centre at rank 3 goes straight through it. Note what rank 2 is actually claiming: that the second one is in a <strong>different rack</strong>. Two servers in the same rack are a pair that does not survive the rack.
+          <br>This only applies to failures with a <em>scope</em>. When something you depend on dies outright — a database, a load balancer — no amount of redundancy on your side helps, because every copy of you was behind it. Redundancy saves you from losing part of yourself, never from losing what you need.
+          <br>Nothing here reaches rank 5, so nothing absorbs a <strong>whole cloud region</strong> — which we will come back to at the end.</div>
           ${skipped.length ? `<div class="explain-box"><strong>${skipped.length} item${skipped.length > 1 ? 's have' : ' has'} no redundancy field in this schema</strong> and will always read as a single point of failure: ${skipped.map(n => `${esc(n.label)} [${esc(n.type)}]`).join(', ')}. That is a gap in the schema, not in your answer.</div>` : ''}`;
       },
       read: () => { const r = S.answers.redundancy = S.answers.redundancy || {}; [...document.querySelectorAll('.iv-red')].forEach(s => { r[s.dataset.k] = s.value; }); }
     },
     {
-      id: 'money', title: `What is it worth?`,
+      id: 'money', title: `What is it worth?`, skippable: true,
       lead: () => `Last stage. This is what turns a red icon into a number someone cares about.`,
       ask: `Roughly what is an hour of downtime worth?`,
       hint: `A yearly revenue figure is fine — the tool divides it down. Leave blank to skip.`,
+      clear: () => { S.answers.revenue = {}; S.answers.cost = {}; },
+      cost: () => `Revenue-at-risk ticks ${esc(money(0))}/hour and the cost columns in Impact Analysis and the Portfolio Dashboard stay empty. The cascade still runs — it just cannot tell you what it costs.`,
       body: () => {
         const rev = S.answers.revenue || {}, parent = S.answers.capParent;
         /* The parent gets its own row — otherwise the double-count guard has nothing to catch. */
-        const caps = (S.answers.capabilities || []).slice();
+        const caps = (S.answers.capabilities || []).filter(c => String(c).trim());
         if (parent && parent.name) caps.unshift(parent.name);
         const d = buildDraft(), costRows = d.nodes.concat(d.reusedNodes).filter(n => hasField(n.type, 'monthlyCost'));
-        return `<table class="iv-grid"><thead><tr><th>Business activity</th><th>Revenue</th><th>Period</th></tr></thead><tbody>
+        /* No capability means no revenue field exists anywhere in the schema to write to —
+           so say that, rather than render an empty table that looks like a bug. */
+        const revTable = !caps.length
+          ? `<div class="explain-box explain-bad"><strong>There is nothing here that can hold a revenue figure.</strong> <code>revenueAmount</code> exists on exactly one class — <strong>Business Capability</strong> — and you have not named one, so revenue-at-risk can only ever read ${esc(money(0))}/hour. Go Back to the business-activity question if you want that number to work.</div>`
+          : `<table class="iv-grid"><thead><tr><th>Business activity</th><th>Revenue</th><th>Period</th></tr></thead><tbody>
             ${caps.map(c => { const k = mkey('Business Capability', c), v = rev[k] || {}, ex = findExisting('Business Capability', c);
               const already = ex && ex.metadata && ex.metadata.revenueAmount;
               const isParent = parent && parent.name && norm(c) === norm(parent.name);
@@ -391,7 +531,8 @@
                 <td><input class="iv-rev" data-k="${esc(k)}" placeholder="e.g. 12000000" value="${esc(v.amount || (already || ''))}"></td>
                 <td><select class="iv-per" data-k="${esc(k)}">${PERIODS.map(p => `<option ${(v.period || (ex && ex.metadata && ex.metadata.revenuePeriod) || 'per year') === p ? 'selected' : ''}>${esc(p)}</option>`).join('')}</select></td></tr>`; }).join('')}
           </tbody></table>
-          <div class="path-step-help">Revenue attaches to the <strong>Business Capability</strong>, not to a server — because that is the level at which money is actually earned. <code>affectedRevenuePerHour</code> sums every capability a failure reaches.</div>
+          <div class="path-step-help">Revenue attaches to the <strong>Business Capability</strong>, not to a server — because that is the level at which money is actually earned. <code>affectedRevenuePerHour</code> sums every capability a failure reaches.</div>`;
+        return `${revTable}
           ${parent && parent.name ? `<div class="explain-box"><strong>${esc(parent.name)} contains ${esc((parent.children || []).join(' and '))}.</strong> Put a figure on the parent <em>or</em> on the children — not both. A failure that reaches ${esc(parent.name)} also reaches everything inside it, so two levels of figures would be summed twice.</div>` : ''}
           ${costRows.length ? `<div class="path-step"><span class="path-step-title">Monthly cost, if you know it (optional)</span>
             <div class="path-step-help">Feeds the cost view in Impact Analysis and the Portfolio Dashboard rollup.</div>
@@ -415,6 +556,42 @@
       }
     }
   ];
+
+  /* The question order. Infrastructure leads: people can describe what they have long
+     before they can name a capability, and starting there means the first screen asks
+     for something they already know. Everything after it is skippable — `skip()` states
+     the price of each omission rather than letting it pass quietly. */
+  const ORDER = ['infrastructure', 'anchor', 'environments', 'ownership', 'capability', 'consumers', 'resilience', 'money'];
+  const STAGES = ORDER.map(id => STAGE_DEFS.find(s => s.id === id));
+
+  function hiddenStage(s) { return !!(s && typeof s.hidden === 'function' && s.hidden()); }
+  function nextIndex(i) { let j = i + 1; while (j < STAGES.length && hiddenStage(STAGES[j])) j++; return j; }
+  function prevIndex(i) { let j = i - 1; while (j > 0 && hiddenStage(STAGES[j])) j--; return Math.max(j, 0); }
+  function isLast(i) { return nextIndex(i) >= STAGES.length; }
+
+  /* What is actually missing, however it went missing. Pressing Next on an empty stage
+     costs exactly what the Skip button costs, so both have to be reported the same way. */
+  function gaps() {
+    const a = S.answers;
+    const miss = {
+      infrastructure: !(a.infra || []).some(t => t.type && !t.skip),
+      anchor: !a.anchor,
+      environments: false,
+      ownership: !a.ownership,
+      capability: !(a.capabilities || []).some(c => String(c).trim()),
+      consumers: !(a.consumers && a.consumers.consumerType),
+      resilience: !Object.keys(a.redundancy || {}).some(k => a.redundancy[k] && a.redundancy[k] !== 'Single instance'),
+      money: !Object.keys(a.revenue || {}).some(k => String((a.revenue[k] || {}).amount || '').trim())
+    };
+    return STAGES.filter(s => miss[s.id] && !hiddenStage(s));
+  }
+
+  function skipSummary(intro) {
+    const g = gaps();
+    if (!g.length) return '';
+    return `<div class="explain-box explain-bad"><strong>${intro}</strong>
+      <ul class="iv-gaps">${g.map(s => `<li><strong>${esc(s.title)}</strong> &mdash; ${typeof s.cost === 'function' ? s.cost() : s.cost}</li>`).join('')}</ul></div>`;
+  }
 
   /* ---------- draft ---------- */
   function buildDraft() {
@@ -443,14 +620,23 @@
     }
     function link(from, to, fromType, toType, label, fromLabel, toLabel, why) {
       if (!label) { claims.push({ kind: 'edge', ref: `${from}|${to}|none`, orphan: true, fromType, toType, fromLabel, toLabel, label: '', why }); return; }
+      /* A stated pairing can land on the same edge the stack already implied. Say it once. */
+      if (claims.some(c => c.kind === 'edge' && c.ref === `${from}|${to}|${label}`)) return;
+      /* Never point two impact-propagating labels at each other. Both directions between the
+         same pair is a mutual dependency: each node then takes the other down, the blast radius
+         doubles, and whichever one carries redundancy absorbs the other's outage. Whatever was
+         claimed first wins, and passes are ordered so a fact the user stated outranks a guess. */
+      if (REVERSE.has(label) && claims.some(c => c.kind === 'edge' && !c.orphan && c.from === to && c.to === from && REVERSE.has(c.label))) return;
       const already = edgeExists(from, to, label);
       if (!already) edges.push({ from, to, label });
       claims.push({ kind: 'edge', ref: `${from}|${to}|${label}`, label, from, to, fromType, toType, fromLabel, toLabel, why, already });
     }
 
-    const appId = resolve('Business Application', a.ownership, { description: a.ownership, owner: a.owner || '' },
+    /* Every layer below is optional now — a skipped stage simply contributes nothing, and
+       the edges that would have crossed it are guarded rather than emitted against null. */
+    const appId = a.ownership ? resolve('Business Application', a.ownership, { description: a.ownership, owner: a.owner || '' },
       { asked: `what this is called on a budget line`, why: `The product you fund and own. Exactly one of these, however many copies are running.` },
-      { why: `Already in your model, so I am reusing it rather than minting a second one with the same name.` });
+      { why: `Already in your model, so I am reusing it rather than minting a second one with the same name.` }) : null;
 
     /* Optional capability parent, created before the children so Contains reads downward. */
     let parentId = null;
@@ -459,15 +645,15 @@
       parentId = resolve('Business Capability', cp.name, { description: cp.name },
         { why: `You said these roll up into one bigger activity, so this is the parent Business Capability.` },
         { why: `Already in your model — reusing it as the parent.` });
-      link(appId, parentId, 'Business Application', 'Business Capability', 'Provides', a.ownership, cp.name,
+      if (appId) link(appId, parentId, 'Business Application', 'Business Capability', 'Provides', a.ownership, cp.name,
         `The application provides the parent activity too.`);
     }
 
-    const capIds = (a.capabilities || []).map(label => {
+    const capIds = (a.capabilities || []).filter(c => String(c).trim()).map(label => {
       const id = resolve('Business Capability', label, { description: label },
         { asked: `what the business could no longer do`, why: `What the business does, independent of the software doing it. The only class that can carry a revenue figure.` },
         { why: `Already in your model, so I am reusing it. Two applications providing the same capability is exactly how a shared business consequence gets modelled.` });
-      link(appId, id, 'Business Application', 'Business Capability', 'Provides', a.ownership, label,
+      if (appId) link(appId, id, 'Business Application', 'Business Capability', 'Provides', a.ownership, label,
         `Without this edge, an outage can only ever be reported as a red icon — never as a business consequence.`);
       if (parentId && (cp.children || []).includes(label))
         link(parentId, id, 'Business Capability', 'Business Capability', 'Contains', cp.name, label,
@@ -478,12 +664,12 @@
     /* Application Services, one per environment. */
     const n = (a.environments || ['Production']).length;
     let prodId = null, prodLabel = '';
-    (a.environments || ['Production']).forEach(env => {
+    if (a.anchor) (a.environments || ['Production']).forEach(env => {
       const isProd = env === 'Production', label = isProd ? a.anchor : `${a.anchor} (${env})`;
       const id = resolve('Application Service', label, { description: label, owner: a.owner || '', environment: env, operationalStatus: 'Operational' },
         { phrase: a.anchor, asked: isProd ? `what someone would call you about` : '', why: isProd ? `The running instance — the layer that can actually fail, and where simulation starts.` : `A separate service, so an outage here cannot make Production look degraded.` },
         { why: `Already in your model, so I am reusing it rather than creating a second ${env} copy.` });
-      link(appId, id, 'Business Application', 'Application Service', 'Instantiates', a.ownership, label,
+      if (appId) link(appId, id, 'Business Application', 'Application Service', 'Instantiates', a.ownership, label,
         `One funded application, ${n} running instance${n > 1 ? 's' : ''}.`);
       if (isProd || !prodId) { prodId = id; prodLabel = label; }
     });
@@ -515,48 +701,127 @@
       });
     }
 
-    /* Infrastructure: nest by schema level, always with a label that propagates upward.
-       Hosting/physical classes nest on the hosting spine; data, network and security leaves
-       hang off the deepest hosting ancestor. Without this, a Rack would end up parented to a
-       Database Instance purely because the DB happened to be the deepest node placed. */
-    const placed = [{ id: prodId, type: 'Application Service', label: prodLabel, level: levelOf('Application Service'), spine: true }];
-    const terms = (a.infra || []).filter(t => t.type && !t.skip).slice().sort((x, y) => levelOf(x.type) - levelOf(y.type));
-    terms.forEach(t => {
-      const lvl = levelOf(t.type);
-      const onSpine = HOSTING.has(t.type) || RUNTIME.has(t.type);
-      let parent = null, lab = null;
-      if (onSpine) {
-        /* Hosting and runtime nest down the spine — that is the chain a failure travels. */
-        placed.filter(p => p.spine).sort((p, q) => q.level - p.level).some(p => {
-          if (p.level >= lvl) return false;
-          const l = pickLabel(p.type, t.type);
-          if (l) { parent = p; lab = l; return true; }
-          return false;
-        });
-      } else {
-        /* Dependency leaves attach to the service that needs them. */
-        const l = pickLabel('Application Service', t.type);
-        if (l) { parent = placed[0]; lab = l; }
-        else placed.filter(p => p.spine).sort((p, q) => q.level - p.level).some(p => {
-          if (p.level >= lvl) return false;
-          const l2 = pickLabel(p.type, t.type);
-          if (l2) { parent = p; lab = l2; return true; }
-          return false;
-        });
+    /* ---- Infrastructure ----
+       `level` is depth from the BUSINESS, not hosting order. Database Instance is level 8
+       and VM is level 6, yet the database sits on the VM. Deriving hosting parentage from
+       level is therefore wrong for every data, storage, network and security class — that
+       is why a database never landed on the box it runs on.
+
+       So hosting classes stack on each other by level, and everything else gets TWO edges:
+         Application Service --Depends on--> Database Instance   (a DB outage reaches the business)
+         Database Instance   --Runs on-->    VM                  (a VM outage reaches the DB)
+       Only the first carries a failure up; only the second carries one down. Emitting just
+       one of them — what this did before — leaves a database that survives losing its own
+       host. csdmData.json has both edges; now so does the interview. */
+    const isHost = ty => HOSTING.has(ty) || RUNTIME.has(ty);
+    const svc = prodId ? { id: prodId, type: 'Application Service', label: prodLabel } : null;
+    const placed = [];
+
+    /* Pass 1 — every node first, so a pairing can name something declared later in the
+       sentence ("a database instance that runs on a VM" names the VM second). */
+    (a.infra || []).filter(t => t.type && !t.skip).slice()
+      .sort((x, y) => levelOf(x.type) - levelOf(y.type))
+      .forEach(t => {
+        const generic = norm(t.label) === norm(t.type);
+        /* Only promise a redundancy value when one can actually be written. Saying it anyway on
+           a class with no redundancy field left the card claiming a resilience answer that was
+           never stored, and the node then read as a single point of failure with no explanation. */
+        const qty = (t.count || 1) < 2 ? ``
+          : canRedundancy(t.type)
+            ? ` You said there is more than one — so I made it one CI with a redundancy value rather than two nodes. That is what lets the cascade absorb losing one of them; two separate nodes could not.`
+            : ` You said there is more than one, but ${t.type} has no redundancy field in this schema, so there is nowhere to record that. It will read as a single point of failure — a gap in the schema, not in your answer.`;
+        const id = resolve(t.type, t.label, { description: t.label, environment: 'Production' },
+          { phrase: t.phrase && norm(t.phrase) !== norm(t.label) ? t.term : '', generic, why: t.why + qty },
+          { why: `Already in your model, so I am reusing it. ${t.why}` });
+        placed.push({ id, type: t.type, label: t.label, level: levelOf(t.type), host: isHost(t.type), t });
+      });
+
+    /* A pairing is matched back by the user's own words, whichever of them we kept. */
+    const findPlaced = phrase => {
+      const k = norm(phrase);
+      return k ? placed.find(p => norm(p.t.phrase) === k || norm(p.t.term) === k || norm(p.t.label) === k) || null : null;
+    };
+    /* EVERY node in the deepest hosting layer above `lvl`, not just one: two VMs in a rack
+       are both in the rack, and taking whichever was placed first stranded the other. */
+    const hostsAbove = (lvl, childType) => {
+      const c = placed.filter(p => p.host && p.level < lvl && pickLabel(p.type, childType));
+      if (!c.length) return [];
+      const deepest = Math.max(...c.map(p => p.level));
+      return c.filter(p => p.level === deepest);
+    };
+    /* The box a non-hosting thing sits on. Prefer what the user said; otherwise only take
+       the shallowest hosting layer when it holds exactly one node — with three VMs on the
+       table, which one the database runs on is a fact we do not have. */
+    /* The user joined these two outright ("app servers that connect to a database"). That is a
+       peer relationship, and calling it hosting inverts the cascade: the database would then
+       "run on" the app servers, so the pair's redundancy absorbs the database's own outage and
+       the two nodes end up killing each other. A stated pairing is never a host guess. */
+    const pairedWith = (q, p) => (q.t.dependsOn || []).some(ph => findPlaced(ph) === p);
+    const hostFor = p => {
+      const hinted = findPlaced(p.t.runsOn);
+      if (hinted && hinted !== p && hinted.host && pickLabel(p.type, hinted.type)) return hinted;
+      const c = placed.filter(q => q.host && pickLabel(p.type, q.type) && !pairedWith(q, p) && !pairedWith(p, q));
+      if (!c.length) return null;
+      const top = Math.min(...c.map(q => q.level));
+      const at = c.filter(q => q.level === top);
+      return at.length === 1 ? at[0] : null;
+    };
+    const wire = (from, to, label, why) => {
+      if (label) link(from.id, to.id, from.type, to.type, label, from.label, to.label, why);
+      return !!label;
+    };
+    const spineWhy = (from, label, to) =>
+      `${from} ${String(label).toLowerCase()} ${to}. This direction is what carries a ${to} failure up to your service — ${label} propagates to the source, Contains would not.`;
+
+    const orphan = p => link(prodId, p.id, 'Application Service', p.type, null, prodLabel, p.label,
+      prodId ? `A ${p.type} cannot attach directly to an Application Service in this schema, and nothing you listed sits between them. Add something that lives in it — then this will connect.`
+        : `You skipped naming the service, so there is nothing above ${p.label} for a failure to travel up to. It will sit on the canvas as an island until you connect it.`);
+
+    /* Pass 2 — structure. */
+    placed.forEach(p => {
+      if (p.host) {
+        /* Hosting stacks on hosting. Falling back to the service is deferred to pass 4:
+           a tier named later in the sentence may yet connect this box. */
+        hostsAbove(p.level, p.type).forEach(q => wire(q, p, pickLabel(q.type, p.type), spineWhy(q.label, pickLabel(q.type, p.type), p.label)));
+        return;
       }
-      const generic = norm(t.label) === norm(t.type);
-      const qty = (t.count || 1) > 1
-        ? ` You said there is more than one — so I made it one CI with a redundancy value rather than two nodes. That is what lets the cascade absorb losing one of them; two separate nodes could not.`
-        : ``;
-      const id = resolve(t.type, t.label, { description: t.label, environment: 'Production' },
-        { phrase: t.phrase && norm(t.phrase) !== norm(t.label) ? t.term : '', generic, why: t.why + qty },
-        { why: `Already in your model, so I am reusing it. ${t.why}` });
-      placed.push({ id, type: t.type, label: t.label, level: lvl, spine: onSpine });
-      if (parent) link(parent.id, id, parent.type, t.type, lab, parent.label, t.label,
-        `${parent.label} ${lab.toLowerCase()} ${t.label}. This direction is what carries a ${t.label} failure up to your service — ${lab} propagates to the source, Contains would not.`);
-      else link(prodId, id, 'Application Service', t.type, null, prodLabel, t.label,
-        `A ${t.type} cannot attach directly to an Application Service in this schema, and nothing you listed sits between them. Add something that lives in it — then this will connect.`);
+      let wired = svc ? wire(svc, p, pickLabel('Application Service', p.type),
+        `${prodLabel} needs ${p.label} to work. This is the edge that carries a ${p.label} outage up to the business — without it a failure here reaches nothing.`) : false;
+      const h = hostFor(p);
+      if (h) wired = wire(p, h, pickLabel(p.type, h.type),
+        `${p.label} runs on ${h.label}${p.t.runsOn ? ` — you said so` : ``}. This is the second edge and it points the other way on purpose: it is what makes losing ${h.label} take ${p.label} down with it.`) || wired;
+      if (!wired) orphan(p);
     });
+
+    /* Pass 3 — pairings the user stated outright ("an app server that connects to a database").
+       They said WHICH things are joined; the label is still ours to choose, so nothing but an
+       impact-propagating label can reach the graph. */
+    placed.forEach(p => (p.t.dependsOn || []).forEach(phrase => {
+      const q = findPlaced(phrase);
+      if (!q || q === p) return;
+      wire(p, q, pickLabel(p.type, q.type),
+        `You said ${p.label} connects to ${q.label}, so this is your relationship rather than one I inferred from the stack.`);
+    }));
+
+    /* Pass 4 — boxes nothing else reached. Figure 16 of the CSDM 5 white paper runs the chain
+       Application Service --[Depends on]--> Application --[Runs On]--> Infrastructure CI, with
+       no direct edge from the service to infrastructure. The shortcut is legal here (real
+       Service Mapping does associate CIs to the service) but it is not what CSDM prescribes.
+
+       Suppressing it for ANY inbound edge was wrong: a Database Instance running on a VM is
+       not that tier, so the service ended up not touching the box it runs on. Two conditions
+       now — the box must be the top of its hosting stack, and not already carried by an
+       Application. */
+    const edgeTo = (id, pred) => claims.some(c => c.kind === 'edge' && !c.orphan && c.to === id && pred(c));
+    const hostInbound = id => edgeTo(id, c => isHost(c.fromType));
+    const appCarried = id => edgeTo(id, c => c.fromType === 'Application');
+    placed.filter(p => p.host && !hostInbound(p.id) && !appCarried(p.id)).forEach(p => {
+      const l = svc ? pickLabel('Application Service', p.type) : null;
+      if (l) wire(svc, p, l, `${prodLabel} runs on ${p.label} and nothing you named sits between them. CSDM 5 would normally put an Application in that gap — name one and this edge moves down a level.`);
+    });
+    /* Anything left touching nothing at all. An existing orphan claim counts, so a node that
+       already failed to connect in pass 2 is not reported twice. */
+    placed.filter(p => !claims.some(c => c.kind === 'edge' && (c.to === p.id || c.from === p.id))).forEach(orphan);
 
     return { nodes, edges, claims, reusedNodes, metaUpdates, capIds, prodId, parentId };
   }
@@ -596,6 +861,8 @@
     const newN = nodeC.filter(c => c.isNew).length, reN = nodeC.length - newN, newE = edgeC.filter(c => !c.already).length;
     setTitle(`Review the proposal`);
     body(`<p class="muted">Nothing has touched the canvas yet. Every claim below is mine to justify and yours to reject.</p>
+      ${skipSummary(`You left ${gaps().length} question${gaps().length > 1 ? 's' : ''} unanswered. That is allowed — this is what it costs you.`)}
+      ${(S.notes.selfDropped || []).length ? `<div class="explain-box">I left ${S.notes.selfDropped.map(w => `&ldquo;${esc(w)}&rdquo;`).join(', ')} out of the infrastructure below — you named ${(S.notes.selfDropped || []).length > 1 ? 'those' : 'that'} as the service or the application itself, and neither can depend on itself.</div>` : ''}
       ${reN ? `<div class="explain-box"><strong>${reN} of these already exist</strong> in your model, so I am pointing at them instead of creating duplicates.</div>` : ''}
       ${d.metaUpdates.length ? `<div class="explain-box explain-bad"><strong>${d.metaUpdates.length} change${d.metaUpdates.length > 1 ? 's' : ''} to nodes you already have.</strong> ${d.metaUpdates.map(u => `${esc(u.label)}: ${esc(u.key)} ${u.old ? `${esc(u.old)} &rarr; ` : `&rarr; `}${esc(u.value)}`).join('; ')}. Untick that node to leave it alone.</div>` : ''}
       <h3 class="iv-h">Things I think you have (${newN} new${reN ? `, ${reN} reused` : ''})</h3>
@@ -604,10 +871,16 @@
       ${edgeC.map(c => claimCard(c, d.claims.indexOf(c))).join('')}
       ${orphanC.length ? `<h3 class="iv-h">Could not connect (${orphanC.length})</h3>${orphanC.map(c => claimCard(c, -1)).join('')}` : ''}
       <div class="explain-box"><strong>Why the labels matter.</strong> Every edge above uses <em>Depends on</em>, <em>Runs on</em>, <em>Uses</em>, <em>Instantiates</em> or <em>Provides</em> — never <em>Contains</em> for the dependency spine. Only those carry a failure from the thing that broke up to the business activity that suffers. It is the difference between a diagram and a model.</div>
-      <div class="actions"><button class="secondary" onclick="CSDM_IV.back()">Back</button><button onclick="CSDM_IV.commit()">Add these to the model</button></div>`);
+      <div class="path-step"><span class="path-step-title">Did I build what you meant?</span>
+        <div class="path-step-help">Say what you expected, in your own words — “the database should run on the VM”, “the app server should not be a VM”. It is saved next to your exact input and my exact output, so the two can be compared and the builder corrected. Nothing here changes the model.</div>
+        <textarea id="iv-expected" placeholder="What should this have looked like?">${esc(S.expected || '')}</textarea></div>
+      <div class="actions"><button class="secondary" onclick="CSDM_IV.back()">Back</button>
+        <button class="secondary" id="iv-save-cmp" onclick="CSDM_IV.saveComparison()">Save comparison</button>
+        <button onclick="CSDM_IV.commit()">Add these to the model</button></div>`);
   }
 
   function commit() {
+    readExpected();
     const keep = new Set([...document.querySelectorAll('.iv-claim')].filter(c => c.checked).map(c => Number(c.dataset.i)));
     const d = S.draft, keptNodes = [], keptEdges = [], live = new Set(), updates = [];
     let dropped = 0;
@@ -627,7 +900,7 @@
     if (!keptNodes.length && !keptEdges.length && !updates.length)
       return alert(!live.size ? `Every claim was rejected, so there is nothing to add.` : `Everything you described is already in the model — nothing new to add.`);
 
-    const ok = markChange(`Interview: ${S.answers.anchor}`, () => {
+    const ok = markChange(`Interview: ${S.answers.anchor || S.answers.ownership || 'model'}`, () => {
       currentModelData.nodes.push(...keptNodes.filter(Boolean));
       currentModelData.edges.push(...keptEdges.filter(Boolean));
       updates.forEach(u => { const n = getNode(u.id); if (n) { n.metadata = n.metadata || {}; n.metadata[u.key] = u.value; } });
@@ -635,6 +908,14 @@
     });
     if (!ok) return alert(`Nothing changed.`);
     const v = window.CSDM_VALIDATOR && window.CSDM_VALIDATOR.validateGraph ? window.CSDM_VALIDATOR.validateGraph(currentModelData) : null;
+    capture('commit', d, {
+      committed: {
+        nodes: keptNodes.filter(Boolean).map(n => `${n.label} [${n.type}]`),
+        edges: keptEdges.filter(Boolean).length,
+        rejected: dropped,
+        validatorErrors: v ? (v.errors || []).length : null
+      }
+    });
     renderDone(keptNodes, keptEdges, updates, dropped, v, [...live]);
   }
 
@@ -681,6 +962,7 @@
         ${absorbed.length ? `<br><strong>${absorbed.length} node${absorbed.length > 1 ? 's' : ''} would absorb it</strong> and stay amber instead of red: ${absorbed.map(n => esc(n.label)).join(', ')} — because you told me what they survive.` : ''}
         ${rev > 0 ? `<br><span class="impact-flag">Revenue at risk:</span> <strong>${esc(money(rev))}/hour</strong> (${esc(money(rev * 24))}/day).` : `<br>Revenue at risk reads ${esc(money(0))} — no capability it reaches carries a figure yet.`}</div>` : ''}
       ${spofs.length ? `<div class="explain-box"><strong>${spofs.length} single point${spofs.length > 1 ? 's' : ''} of failure</strong> you told me about: ${spofs.map(n => esc(n.label)).join(', ')}. Coach will list ${spofs.length > 1 ? 'them' : 'it'} too — but now with a reason, because the redundancy answers are real.</div>` : ''}
+      ${skipSummary(`This is why parts of the numbers above read thin — and why Impact Analysis and cost impact will too.`)}
       <div class="actions">
         ${target ? `<button onclick="closeDialog();simulateFailure('${esc(target.id)}')">Fail ${esc(target.label)}</button>` : ''}
         ${region && (!target || region.id !== target.id) ? `<button onclick="CSDM_IV.regionCloser('${esc(region.id)}')">Now lose the whole ${esc(region.type === 'Cloud Region' ? 'region' : 'data centre')}</button>` : ''}
@@ -701,7 +983,7 @@
     body(`<div class="explain-box explain-bad"><strong>${reached.length} of your nodes go down. ${absorbed.length} absorb it.</strong>
         ${rev > 0 ? `Revenue at risk: <strong>${esc(money(rev))}/hour</strong>.` : ``}</div>
       <div class="path-step"><span class="path-step-title">Why so little survived</span><div class="path-step-help">
-        A failure origin has a <em>scope rank</em>: Physical Host 1, Rack 2, Data Center 3, Availability Zone 4, Cloud Region 5. A node absorbs a failure only when its redundancy rank is at least the origin rank — and the ranks available to you are <em>Redundant pair</em> 2 and <em>HA cluster</em> / <em>Auto-scaling</em> 4.
+        A failure origin has a <em>scope rank</em>: one machine (host, VM, container) 1, Rack 2, Data Center 3, Availability Zone 4, Cloud Region 5. A node absorbs a failure only when its redundancy rank is at least the origin rank — and the ranks available to you are <em>Redundant pair</em> 2 and <em>HA cluster</em> / <em>Auto-scaling</em> 4. A component that is not a scope at all — a database, a load balancer — has no rank, and nothing downstream absorbs its loss: every copy of everything above it was behind it.
         ${isRegion ? `<br><strong>Nothing you can tick reaches 5.</strong> No redundancy option in this schema survives losing a whole region. The only fix is a second region in the model — which is precisely the point.` : `<br>A <em>standby pair</em> ranks 2 and cannot absorb a data centre loss at rank 3. Only an HA cluster or auto-scaling can.`}
       </div></div>
       <div class="actions"><button class="secondary" onclick="closeDialog()">Close</button>
@@ -715,29 +997,61 @@
   function renderStage() {
     if (S.i >= STAGES.length) return renderReview();
     const st = STAGES[S.i], lead = typeof st.lead === 'function' ? st.lead() : st.lead;
-    const askText = String(st.ask)
+    const askText = String(typeof st.ask === 'function' ? st.ask() : st.ask)
       .replace('${app}', `<strong>${esc(S.answers.ownership || S.answers.anchor || 'it')}</strong>`)
       .replace('${anchor}', `<strong>${esc(S.answers.anchor || 'it')}</strong>`);
+    /* Shown once, on the stage right after the drop happened. */
+    const dropped = (S.notes.selfDroppedNew || []).slice();
+    S.notes.selfDroppedNew = [];
     setTitle(st.title);
-    body(`<div class="iv-progress">${STAGES.map((s, i) => `<span class="iv-dot ${i === S.i ? 'on' : i < S.i ? 'done' : ''}">${esc(s.id)}</span>`).join('')}<span class="iv-dot">review</span></div>
+    body(`<div class="iv-progress">${STAGES.map((s, i) => hiddenStage(s) ? '' : `<span class="iv-dot ${i === S.i ? 'on' : S.skipped[s.id] ? 'skipped' : i < S.i ? 'done' : ''}">${esc(s.id)}</span>`).join('')}<span class="iv-dot">review</span></div>
       <p class="muted">${lead}</p>
       <p class="iv-ask">${askText}</p>
       <p class="muted iv-hint">${st.hint}</p>
+      ${dropped.length ? `<div class="explain-box"><strong>Taken back out of your infrastructure list: ${dropped.map(w => `&ldquo;${esc(w)}&rdquo;`).join(', ')}.</strong> You have just named that as the thing itself, and a service cannot be a dependency of itself. Say so on this screen if I have that wrong.</div>` : ''}
       ${st.body()}
       <div id="iv-err" class="explain-box explain-bad hidden"></div>
       <div class="actions">${S.i ? `<button class="secondary" onclick="CSDM_IV.back()">Back</button>` : `<button class="secondary" onclick="closeDialog()">Cancel</button>`}
-        <button onclick="CSDM_IV.next()">${S.i === STAGES.length - 1 ? 'See the proposal' : 'Next'}</button></div>`);
+        ${st.skippable ? `<button class="secondary" onclick="CSDM_IV.skip()">Skip this</button>` : ''}
+        <button onclick="CSDM_IV.next()">${isLast(S.i) ? 'See the proposal' : 'Next'}</button></div>`);
     setTimeout(() => { const f = document.querySelector('#modal-body input:not([type=checkbox]):not([disabled]), #modal-body textarea'); if (f) f.focus(); }, 60);
   }
 
+  /* Skipping is allowed anywhere, but never quietly. The cost is stated as the features
+     that stop working, because a model with a hole in it is the lesson — the same hole
+     turns up again in Impact Analysis and the cost rollup, and it should be recognised. */
+  function skip() {
+    const st = STAGES[S.i];
+    setTitle(`Skip: ${st.title}`);
+    body(`<div class="explain-box explain-bad"><strong>Skip this and here is what stops working.</strong><br>${typeof st.cost === 'function' ? st.cost() : st.cost}</div>
+      <p class="muted">You can come Back to it any time before the review, and every field here can also be filled in later from the Inspector on the canvas.</p>
+      <div class="actions"><button class="secondary" onclick="CSDM_IV.skipConfirm()">Skip it anyway</button>
+        <button onclick="CSDM_IV.redraw()">Go back and answer it</button></div>`);
+  }
+  function skipConfirm() {
+    const st = STAGES[S.i];
+    S.skipped[st.id] = true;
+    if (typeof st.clear === 'function') st.clear();
+    S.draft = null;
+    S.i = nextIndex(S.i);
+    renderStage();
+  }
+
   function next() {
-    const err = STAGES[S.i].read();
+    const st = STAGES[S.i], err = st.read();
     if (err === `_stay`) return;
     if (err) { const e = document.getElementById('iv-err'); e.textContent = err; e.classList.remove('hidden'); return; }
-    if (STAGES[S.i].id === 'infrastructure' && pendingInfra().length) return renderStage();
-    S.i++; renderStage();
+    delete S.skipped[st.id];
+    if (st.id === 'infrastructure' && pendingInfra().length) return renderStage();
+    S.i = nextIndex(S.i); renderStage();
   }
-  function back() { if (S.i >= STAGES.length) S.i = STAGES.length - 1; else if (S.i > 0) S.i--; S.draft = null; renderStage(); }
+  /* Coming back to a skipped stage un-skips it: the answer box is there to be used. */
+  function back() {
+    if (S.i >= STAGES.length) { S.i = STAGES.length - 1; while (S.i > 0 && hiddenStage(STAGES[S.i])) S.i--; }
+    else if (S.i > 0) S.i = prevIndex(S.i);
+    delete S.skipped[STAGES[S.i].id];
+    S.draft = null; renderStage();
+  }
   function readCapsLoose() { const v = [...document.querySelectorAll('.iv-cap')].map(i => (i.value || '').trim()); S.answers.capabilities = v.length ? v : ['']; }
   /* Keep whatever is on screen when a tier row is added or removed mid-edit. */
   function readTiersLoose() {
@@ -753,7 +1067,7 @@
   function start() {
     if (!window.CSDM_SCHEMA) return alert(`Schema not loaded yet — try again in a moment.`);
     if (!window.CSDM_LEXICON) return alert(`Lexicon not loaded — check that interviewLexicon.js is included.`);
-    S = { i: 0, answers: { environments: ['Production'], capabilities: [''], infra: [], redundancy: {}, revenue: {}, cost: {} }, draft: null, parsing: false, parsedText: '', parseSource: '' };
+    S = { i: 0, answers: { environments: ['Production'], capabilities: [''], infra: [], redundancy: {}, revenue: {}, cost: {} }, skipped: {}, notes: {}, draft: null, parsing: false, parsedText: '', parseSource: '' };
     if (typeof closeBarMenus === 'function') closeBarMenus();
     /* A key may have been added or dropped since the page loaded, and the infrastructure
        stage promises which parser it will use before it uses it. */
@@ -886,7 +1200,7 @@
   }
 
   window.CSDM_IV = {
-    start, next, back, commit, regionCloser,
+    start, next, back, commit, regionCloser, skip, skipConfirm, redraw: renderStage, saveComparison,
     addCap: () => { readCapsLoose(); S.answers.capabilities.push(''); renderStage(); setTimeout(() => { const r = document.querySelectorAll('.iv-cap'); if (r.length) r[r.length - 1].focus(); }, 60); },
     /* Re-render on change so the hierarchy question appears as soon as a second activity is named. */
     refreshCaps: () => { const active = document.activeElement, i = [...document.querySelectorAll('.iv-cap')].indexOf(active); readCapsLoose(); renderStage(); setTimeout(() => { const r = document.querySelectorAll('.iv-cap'); if (i >= 0 && r[i]) r[i].focus(); }, 40); },

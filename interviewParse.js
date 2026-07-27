@@ -125,7 +125,7 @@ function outputSchema() {
         items: {
           type: 'object',
           additionalProperties: false,
-          required: ['sourcePhrase', 'label', 'type', 'why', 'ambiguous', 'candidates', 'count', 'redundancy'],
+          required: ['sourcePhrase', 'label', 'type', 'why', 'ambiguous', 'candidates', 'count', 'redundancy', 'runsOn', 'dependsOn'],
           properties: {
             sourcePhrase: { type: 'string', description: 'The exact words from the user text that named this thing. Must appear verbatim in the input.' },
             label: { type: 'string', description: 'The name to give the node. Use the proper name if the user gave one (e.g. "Rack A1", "pgh-core-k8s"); otherwise repeat the class name.' },
@@ -134,7 +134,11 @@ function outputSchema() {
             ambiguous: { type: 'boolean', description: 'True when the words genuinely map to more than one class and guessing would teach the user something false.' },
             candidates: { type: 'array', description: 'When ambiguous, the classes it could be. Empty otherwise.', items: { type: 'string', enum: classes } },
             count: { type: 'integer', enum: [1, 2, 3], description: 'How many the user said there were. 1 if unstated, 2 for a pair, 3 for three or more.' },
-            redundancy: { type: 'string', enum: REDUNDANCY, description: 'Only when the user stated it outright. "unknown" otherwise — never infer it.' }
+            redundancy: { type: 'string', enum: REDUNDANCY, description: 'Only when the user stated it outright. "unknown" otherwise — never infer it.' },
+            /* Pairings only, in the user's own words. The CSDM label is chosen downstream by
+               pickLabel() so that only impact-propagating labels can ever reach the graph. */
+            runsOn: { type: 'string', description: 'The sourcePhrase of the thing the user said this one runs on, sits on, or is hosted by. Empty string when they did not say.' },
+            dependsOn: { type: 'array', description: 'sourcePhrases of things the user said this one connects to, calls, reads from, or needs. Empty when they did not say.', items: { type: 'string' } }
           }
         }
       }
@@ -158,6 +162,9 @@ Further rules:
 - sourcePhrase must be the user's own words, copied verbatim from the input.
 - "Environment" (prod, staging, dev) is not a class in CSDM — it is a property of an Application Service. Skip those words entirely.
 - Do not invent things the user did not name. No entry for something merely implied.
+- Report the PAIRINGS the user stated, never a relationship type. "a database instance that runs on a VM" sets runsOn on the database to the VM's sourcePhrase. "an app server that connects to a database" adds the database's sourcePhrase to the app server's dependsOn. Name the other thing with its exact sourcePhrase so the tool can match it.
+- You choose WHICH things are paired. You never choose HOW — the tool picks the CSDM relationship label itself, because only certain labels carry a failure upward, and a wrong one would look right on screen while silently producing no impact analysis at all.
+- Leave runsOn empty and dependsOn empty unless the user actually said it. Never infer a stack from what is typical.
 
 Classes available in this schema (name | domain | level | description):
 ${classTable()}`;

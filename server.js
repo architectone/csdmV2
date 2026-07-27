@@ -10,6 +10,10 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const DATA_FILE = path.join(__dirname, 'csdmData.json');
 const BACKUP_DIR = path.join(__dirname, 'backups');
+/* Interview transcripts: what was typed, what the parser made of it, what got built.
+   Kept out of backups/ deliberately — these are evidence for tuning the parser and the
+   draft builder, not models to load. */
+const CAPTURE_DIR = path.join(__dirname, 'captures');
 const BACKUP_FILE_PATTERN = /^csdmData\..+\.json$/;
 
 app.use(express.json({ limit: '10mb' }));
@@ -190,6 +194,40 @@ app.post('/api/csdm', (req, res, next) => {
 app.get('/api/csdm/models', (req, res, next) => {
   try {
     res.json({ models: listSavedModels() });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/* One file per interview run. The point is the pairing: `input` is exactly what the user
+   typed, `built` is exactly what buildDraft() produced from it, and `expected` is what they
+   say it should have been. Diffing those three is how the draft builder gets tuned. */
+app.post('/api/interview/capture', (req, res, next) => {
+  try {
+    const body = req.body || {};
+    fs.mkdirSync(CAPTURE_DIR, { recursive: true });
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const record = Object.assign({ at: new Date().toISOString() }, body);
+    const name = `interview.${stamp}.json`;
+    fs.writeFileSync(path.join(CAPTURE_DIR, name), JSON.stringify(record, null, 2), 'utf8');
+    res.json({ success: true, file: name });
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.get('/api/interview/captures', (req, res, next) => {
+  try {
+    if (!fs.existsSync(CAPTURE_DIR)) return res.json({ captures: [] });
+    const captures = fs.readdirSync(CAPTURE_DIR)
+      .filter(n => /^interview\..+\.json$/.test(n))
+      .sort().reverse()
+      .slice(0, Number(req.query.limit) || 25)
+      .map(n => {
+        try { return Object.assign({ file: n }, JSON.parse(fs.readFileSync(path.join(CAPTURE_DIR, n), 'utf8'))); }
+        catch (e) { return { file: n, error: e.message }; }
+      });
+    res.json({ captures });
   } catch (err) {
     next(err);
   }

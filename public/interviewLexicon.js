@@ -37,6 +37,21 @@
       ]
     },
     {
+      /* Longest span wins in rawMatches(), so this beats the bare `app` and `server` traps
+         sitting inside it. Figure 16 of the CSDM 5 white paper puts Application between the
+         service and the hardware — Application Service [Depends on] Application [Runs On]
+         Infrastructure CI. Without this option that middle tier is unreachable, and every
+         interview answer skips it. */
+      key: 'appserver', pattern: /\b(app|application|web|api)\s+servers?\b/i,
+      ask: `Do you mean the software, or the box it runs on?`,
+      why: `CSDM 5 puts a tier between your service and the hardware: an Application runs on infrastructure, and the Application Service depends on that Application. Naming the box here skips the tier — legal, but not the chain CSDM prescribes.`,
+      options: [
+        { label: `The software itself`, type: 'Application' },
+        { label: `A virtual machine it runs on`, type: 'VM' },
+        { label: `Physical hardware it runs on`, type: 'Physical Host' }
+      ]
+    },
+    {
       key: 'server', pattern: /\b(servers?|boxes|box|hosts?|machines?)\b/i,
       ask: `Physical or virtual?`,
       why: `Physical and virtual sit at different levels — and only one of them can lose a power feed.`,
@@ -181,12 +196,40 @@
     return s;
   }
 
-  function split(text) {
-    return (' ' + String(text || '').replace(/\s+/g, ' ').trim() + ' ')
-      .split(SPLIT)
-      .map(s => String(s || '').replace(/^[\s\-•*]+|[\s.]+$/g, '').trim())
-      .filter(s => s && !s.split(/[\s\-]+/).every(w => !w || SELF.test(w)));
+  /* The words the splitter breaks on ARE the relationship the user stated. Throwing them away
+     is why "a database instance that runs on a VM" produced two unrelated nodes: the pairing
+     was destroyed before anything else got a chance to see it. We still never emit a CSDM
+     relationship label from here — only WHICH things are joined. pickLabel() picks HOW. */
+  const SEP_HOSTED = /\b(?:runs?|running|hosted|host|sits?|sitting|lives?|living|deployed|installed|on)\b/i;
+  const SEP_LINKS = /\b(?:connect(?:s|ed|ing)?|talks?|calls?|uses?|using|reads?|writes?|queries|querying|depends?|needs?|backed|hits?|fronts?)\b/i;
+  function sepKind(sep) {
+    const s = String(sep || '');
+    if (!s.trim()) return '';
+    if (SEP_LINKS.test(s)) return 'dependsOn';
+    if (SEP_HOSTED.test(s)) return 'runsOn';
+    return '';
   }
+
+  /* Same fragments as split(), but each one keeps the separator that preceded it. */
+  function splitParts(text) {
+    const s = ' ' + String(text || '').replace(/\s+/g, ' ').trim() + ' ';
+    const re = new RegExp(SPLIT.source, 'gi');
+    const clean = v => String(v || '').replace(/^[\s\-•*]+|[\s.]+$/g, '').trim();
+    const keep = v => v && !v.split(/[\s\-]+/).every(w => !w || SELF.test(w));
+    const out = [];
+    let last = 0, sep = '', m;
+    while ((m = re.exec(s)) !== null) {
+      const t = clean(s.slice(last, m.index));
+      if (keep(t)) { out.push({ text: t, sep }); sep = m[0]; }
+      else if (!sep) sep = m[0];
+      last = m.index + m[0].length;
+      if (re.lastIndex === m.index) re.lastIndex++;
+    }
+    const t = clean(s.slice(last));
+    if (keep(t)) out.push({ text: t, sep });
+    return out;
+  }
+  function split(text) { return splitParts(text).map(p => p.text); }
 
   /* ---------- resolving one fragment ---------- */
   /* Every pattern is scanned across the whole fragment, not just the first hit, so a fragment
@@ -242,9 +285,20 @@
   /* One pass over free text -> an ordered list of findings, one per thing named. */
   function scan(text) {
     const out = [];
-    split(text).forEach(frag => {
+    splitParts(text).forEach(part => {
+      const frag = part.text, first = out.length;
+      /* "A connected to B" / "B that runs on C": the separator joins the fragment before it
+         to this one, so the hint is recorded on the EARLIER finding and points at this one. */
+      const linkUp = () => {
+        const kind = sepKind(part.sep);
+        if (!kind || !first || out.length <= first) return;
+        const prev = out[first - 1], target = out[first].term;
+        if (!target || target === prev.term) return;
+        if (kind === 'runsOn') { if (!prev.runsOn) prev.runsOn = target; }
+        else { prev.dependsOn = prev.dependsOn || []; if (!prev.dependsOn.includes(target)) prev.dependsOn.push(target); }
+      };
       const ms = rawMatches(frag);
-      if (!ms.length) { out.push({ kind: 'unknown', term: frag, phrase: '', label: strip(frag), generic: false, count: countOf(frag) }); return; }
+      if (!ms.length) { out.push({ kind: 'unknown', term: frag, phrase: '', label: strip(frag), generic: false, count: countOf(frag) }); linkUp(); return; }
       const gs = chunk(frag, ms), generic = isGeneric(frag, ms), single = gs.length === 1;
       gs.forEach(g => {
         const w = winner(g), phrase = frag.slice(g.start, g.end);
@@ -253,6 +307,7 @@
         if (w.kind === 'class') out.push({ kind: 'class', type: w.entry.type, why: w.entry.why, group: w.entry.group, term: frag, phrase, label: label || w.entry.type, generic, count });
         else out.push({ kind: 'trap', trap: w.trap, term: frag, phrase, label, generic, count });
       });
+      linkUp();
     });
     return out;
   }
