@@ -15,6 +15,94 @@ const REDUNDANCY = ['unknown', 'Single instance', 'Redundant pair', 'HA cluster'
 const MAX_INPUT = 4000;
 const MAX_ITEMS = 40;
 
+/* USD per MILLION tokens for MODEL. Cache writes are 1.25x input at the 5-minute
+   TTL (2x at one hour — not used here, the cache_control below is a bare
+   `ephemeral` with no ttl), and cache reads are 0.1x input. Update these together
+   with MODEL: a stale price here reports a confident wrong number, which is worse
+   than reporting none. */
+const PRICING = { input: 1.00, output: 5.00, cacheWrite: 1.25, cacheRead: 0.10 };
+/* Haiku 4.5 will not cache a prefix below this. Under it, `cache_control` is
+   accepted and silently does nothing — no error, just cacheWrite 0 forever. The
+   system prompt here is the class table, so whether it clears the bar depends on
+   how many nodeTypes the schema has. Hence the diagnostic in logUsage(). */
+const CACHE_MIN_TOKENS = 4096;
+/* Optional: set INTERVIEW_CREDIT_USD=20 to have the log report what is left. */
+const CREDIT_USD = Number(process.env.INTERVIEW_CREDIT_USD || 0) || null;
+
+/* Resets when the server restarts — this is a "what did this session cost me"
+   readout, not accounting. console.anthropic.com remains the source of truth. */
+const spend = { calls: 0, input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, cacheHits: 0, since: new Date().toISOString() };
+
+function costOf(u) {
+  const per = n => (n || 0) / 1e6;
+  return per(u.input) * PRICING.input
+    + per(u.output) * PRICING.output
+    + per(u.cacheWrite) * PRICING.cacheWrite
+    + per(u.cacheRead) * PRICING.cacheRead;
+}
+
+/* Sub-cent costs are the whole point here, so do not round to 2dp. */
+function usd(v) {
+  const n = Number(v) || 0;
+  if (n === 0) return '$0';
+  return n < 0.01 ? `$${n.toFixed(6)}` : `$${n.toFixed(4)}`;
+}
+
+function recordUsage(usage) {
+  const cost = costOf(usage);
+  spend.calls++;
+  spend.input += usage.input || 0;
+  spend.output += usage.output || 0;
+  spend.cacheRead += usage.cacheRead || 0;
+  spend.cacheWrite += usage.cacheWrite || 0;
+  spend.cost += cost;
+  if (usage.cacheRead > 0) spend.cacheHits++;
+  return cost;
+}
+
+function usageReport() {
+  const billedPrefix = spend.input + spend.cacheRead + spend.cacheWrite;
+  return {
+    model: MODEL,
+    pricingPerMillionUSD: PRICING,
+    since: spend.since,
+    calls: spend.calls,
+    tokens: { input: spend.input, output: spend.output, cacheRead: spend.cacheRead, cacheWrite: spend.cacheWrite },
+    costUSD: Number(spend.cost.toFixed(6)),
+    averageCostPerCallUSD: spend.calls ? Number((spend.cost / spend.calls).toFixed(6)) : 0,
+    /* The number worth watching: at this average, how many more calls the credit buys. */
+    callsRemainingAtThisRate: CREDIT_USD && spend.calls && spend.cost > 0
+      ? Math.floor((CREDIT_USD - spend.cost) / (spend.cost / spend.calls)) : null,
+    creditUSD: CREDIT_USD,
+    creditRemainingUSD: CREDIT_USD ? Number((CREDIT_USD - spend.cost).toFixed(6)) : null,
+    cache: {
+      minimumPrefixTokens: CACHE_MIN_TOKENS,
+      callsWithCacheHit: spend.cacheHits,
+      /* Nothing cached across the whole session means the prefix never cleared the
+         minimum — say so rather than letting it read as "caching is working". */
+      engaged: spend.cacheWrite > 0 || spend.cacheRead > 0,
+      note: (spend.calls > 1 && spend.cacheWrite === 0 && spend.cacheRead === 0)
+        ? `No cache write or read in ${spend.calls} calls — the system prompt is below the ${CACHE_MIN_TOKENS}-token minimum for ${MODEL}, so cache_control is inert.`
+        : ''
+    },
+    /* Averages over the session, useful for projecting a bill. */
+    averageTokensPerCall: spend.calls
+      ? { input: Math.round(billedPrefix / spend.calls), output: Math.round(spend.output / spend.calls) }
+      : { input: 0, output: 0 }
+  };
+}
+
+function logUsage(usage, items) {
+  const cost = recordUsage(usage);
+  const cached = usage.cacheRead > 0 ? `cache HIT ${usage.cacheRead}` : `cache miss`;
+  const credit = CREDIT_USD ? ` | ${usd(CREDIT_USD - spend.cost)} left of ${usd(CREDIT_USD)}` : '';
+  console.log(`[interview] ${items} item(s) | in ${usage.input} out ${usage.output} | ${cached} write ${usage.cacheWrite} | ${usd(cost)} this call | session ${spend.calls} calls ${usd(spend.cost)}${credit}`);
+  /* Warn once, on the second call — the first call can never be a cache hit. */
+  if (spend.calls === 2 && spend.cacheWrite === 0 && spend.cacheRead === 0) {
+    console.log(`[interview] NOTE: prompt caching is not engaging. ${MODEL} needs a cacheable prefix of ${CACHE_MIN_TOKENS}+ tokens and this system prompt is smaller, so cache_control does nothing. Input is billing at the full ${usd(PRICING.input / 1e6 * 1000)}/1k rate.`);
+  }
+}
+
 let client = null;
 /* Held in memory only, and deliberately never written to disk or echoed back to the
    browser — a key in csdmData.json or localStorage would outlive the session that
@@ -294,9 +382,7 @@ function register(app) {
         anchor: String(body.anchor || '').slice(0, 120),
         app: String(body.app || '').slice(0, 120)
       });
-      if (result.usage) {
-        console.log(`[interview] ${result.items.length} item(s) | in ${result.usage.input} out ${result.usage.output} | cache read ${result.usage.cacheRead} write ${result.usage.cacheWrite}`);
-      }
+      if (result.usage) logUsage(result.usage, result.items.length);
       res.json(result);
     } catch (err) {
       if (err.unavailable) return res.status(501).json({ unavailable: true, error: err.message });
@@ -306,6 +392,10 @@ function register(app) {
   });
 
   app.get('/api/interview/config', (req, res) => res.json(configState()));
+
+  /* Server console only tells you what you were watching for. This is the same
+     numbers on demand, so cost can be checked from the browser mid-interview. */
+  app.get('/api/interview/usage', (req, res) => res.json(usageReport()));
 
   app.post('/api/interview/config', async (req, res) => {
     const body = req.body || {};
@@ -337,4 +427,4 @@ function register(app) {
   });
 }
 
-module.exports = { register, parseInterviewText, outputSchema, MODEL };
+module.exports = { register, parseInterviewText, outputSchema, usageReport, costOf, PRICING, MODEL };
