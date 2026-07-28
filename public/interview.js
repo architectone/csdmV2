@@ -1,5 +1,5 @@
-/* Interview Mode — Anchor / Environments / Ownership / Capability / Infrastructure /
-   Resilience / Money / Review. See INTERVIEW_MODE_SPEC.md.
+/* Interview Mode — Anchor / Environments / Ownership / Capability / Consumers /
+   Infrastructure / Resilience / Money / Review. See INTERVIEW_MODE_SPEC.md.
    Prose uses template literals only (apostrophes in single-quoted strings have broken app.js). */
 (function () {
   const ENVS = ['Production', 'Staging', 'Test', 'Development', 'Disaster Recovery'];
@@ -117,6 +117,11 @@
       for (let i = 2; i < 20; i++) { const l = `${t.label} ${i}`; if (free(t, l)) { t.label = l; seen.set(key(t), t); return; } }
       t.skip = true;
     });
+    /* Infrastructure is now asked after the service is named, so the self-reference runs the
+       other way: the anchor is already known when the parse happens. Hooked here rather than at
+       each call site so no future parse path can skip it — a service that depends on itself is
+       a silently wrong cascade. dropSelfTerms is idempotent. */
+    dropSelfTerms();
   }
   function pendingInfra() { return (S.answers.infra || []).filter(t => !t.type && !t.skip); }
   /* "two VMs" pre-selects `Redundant pair` — quantity belongs in the redundancy field. */
@@ -274,10 +279,11 @@
     });
   }
 
-  /* Infrastructure is answered before the service is named, so a sentence like
-     “the billing portal runs on two app servers” can make the service a dependency of
-     itself. Whatever is later named as the anchor or the application gets pulled back
-     out of the term list — and said out loud, because a silent drop is a silent guess. */
+  /* A sentence like “the billing portal runs on two app servers” can make the service a
+     dependency of itself. Whatever is named as the anchor or the application gets pulled back
+     out of the term list — and said out loud, because a silent drop is a silent guess.
+     Runs from normalizeInfra (the parse already knows the anchor) and from the anchor and
+     ownership reads (in case either is renamed after the infrastructure stage). */
   function dropSelfTerms() {
     const self = [S.answers.anchor, S.answers.ownership].filter(Boolean).map(norm);
     if (!self.length) return;
@@ -300,7 +306,7 @@
       ask: `What is the one thing that, if it broke right now, someone would call you about?`,
       hint: `Use whatever you actually call it — “the billing portal”, “Charles River”, “the claims system”.`,
       clear: () => { S.answers.anchor = ''; },
-      cost: () => `There will be no <strong>Application Service</strong> — the only layer failure simulation can start from. Everything you listed a moment ago lands on the canvas with nothing above it to carry a failure upward, so blast radius, revenue-at-risk and Impact Analysis all have no starting point.`,
+      cost: () => `There will be no <strong>Application Service</strong> — the only layer failure simulation can start from. Whatever infrastructure you name later lands on the canvas with nothing above it to carry a failure upward, so blast radius, revenue-at-risk and Impact Analysis all have no starting point.`,
       body: () => `<div class="field full"><label>Name it</label><input id="iv-anchor" placeholder="e.g. Billing Portal" value="${esc(S.answers.anchor || '')}" list="iv-anchor-list">
         <datalist id="iv-anchor-list">${existing('Application Service').map(n => `<option>${esc(n.label)}</option>`).join('')}</datalist></div>
         <div class="path-step-help">Whatever you name here becomes an <strong>Application Service</strong> — the layer that actually runs and can fail. It is the only layer failure simulation can start from, which is why everything you just listed has to hang off it.</div>`,
@@ -407,7 +413,7 @@
       id: 'infrastructure', title: `What is it running on?`, skippable: true,
       lead: () => S.answers.anchor
         ? `Back down the stack. <strong>${esc(S.answers.anchor)}</strong> has to run on something.`
-        : `We start at the bottom, with the part you can actually point at. Everything else in this interview hangs off what you name here.`,
+        : `You skipped naming the service, so this is the part you can actually point at. It will land on the canvas — just with nothing above it to carry a failure upward.`,
       ask: () => S.answers.anchor ? `What does <strong>${esc(S.answers.anchor)}</strong> run on, or need to work?` : `What does it all run on?`,
       hint: `List it or just say it in a sentence — commas, new lines, or plain prose like “two app servers that connect to a database on a VM”. I will pull out each thing, sort out the CSDM classes, and show you my reasoning.`,
       clear: () => { S.answers.infra = []; S.answers.infraText = ''; S.parsedText = ''; S.parseSource = ''; },
@@ -561,7 +567,12 @@
      before they can name a capability, and starting there means the first screen asks
      for something they already know. Everything after it is skippable — `skip()` states
      the price of each omission rather than letting it pass quietly. */
-  const ORDER = ['infrastructure', 'anchor', 'environments', 'ownership', 'capability', 'consumers', 'resilience', 'money'];
+  /* Question order. Top-down, the way CSDM itself reads: name the service, then who owns it,
+     what business ability it serves, who consumes it, and only then what it runs on. Every
+     stage is skippable, so a person who does not know the infrastructure just passes it by
+     and still ends up with a business-layer model. Re-sequence here and nowhere else —
+     STAGE_DEFS is definition order, and both leads and asks branch on what is already known. */
+  const ORDER = ['anchor', 'environments', 'ownership', 'capability', 'consumers', 'infrastructure', 'resilience', 'money'];
   const STAGES = ORDER.map(id => STAGE_DEFS.find(s => s.id === id));
 
   function hiddenStage(s) { return !!(s && typeof s.hidden === 'function' && s.hidden()); }
