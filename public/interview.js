@@ -59,6 +59,53 @@
   function canRedundancy(type) { return typeof supportsRedundancy === 'function' ? supportsRedundancy(type) : hasField(type, 'redundancy'); }
   function money(v) { return typeof formatMoney === 'function' ? formatMoney(v) : `$${Number(v || 0).toFixed(2)}`; }
 
+  /* ---------- CSDM adoption phase scope ----------
+     app.js owns the scope (Learn menu ▸ CSDM Phase); the interview only reads it. Each guard
+     defaults to permissive so this module still runs if app.js is ever loaded without it.
+     The scope decides which STAGES are asked at all — a shop at Crawl is never asked about
+     business capabilities or service commitments, because those classes are not in play yet
+     and a question you cannot use the answer to is a question that teaches the wrong thing. */
+  function inScope(type) { return typeof inPhaseScope === 'function' ? inPhaseScope(type) : true; }
+  function scopeIsAll() { return typeof phaseScopeIsAll === 'function' ? phaseScopeIsAll() : true; }
+  function scopeLabel() { return typeof phaseScopeLabel === 'function' ? phaseScopeLabel() : `all phases`; }
+  function phaseOf(type) { return typeof classPhase === 'function' ? classPhase(type) : ''; }
+  function phaseNote(types, intro) { return typeof outOfPhaseNote === 'function' ? outOfPhaseNote(types, intro) : ''; }
+  function scopedInfraTypes() { try { return schema().infrastructureTypes().filter(inScope); } catch (e) { return []; } }
+  /* The scope can be changed from the Learn menu while the interview is open. Re-read it,
+     re-drop whatever no longer fits, and re-render — silently keeping a Run-phase claim in a
+     Crawl-scoped draft would put a class on the canvas the builders had just refused to offer. */
+  function onPhaseScopeChange() {
+    if (!S) return;
+    dropOutOfPhaseTerms();
+    S.draft = null;
+    if (S.i < STAGES.length && hiddenStage(STAGES[S.i])) S.i = nextIndex(S.i);
+    if (!document.getElementById('modal-backdrop').classList.contains('hidden')) renderStage();
+  }
+  /* A term the parser resolved to an out-of-scope class. Dropped, never re-pointed at a class
+     the user did not name — and said out loud on the next screen, exactly like dropSelfTerms.
+     REVERSIBLE, and that matters: the note tells the user to widen the scope, so widening it has
+     to bring the term back by itself. Making them retype a sentence the parser already read
+     correctly would punish them for following the instruction. Only a term WE dropped for phase
+     comes back — `selfDrop` and a user-chosen SKIP both stay exactly where the user left them. */
+  function dropOutOfPhaseTerms() {
+    (S.answers.infra || []).forEach(t => {
+      const w = `${t.label || t.term} [${t.type}]`;
+      if (t.phaseDrop && t.type && !t.selfDrop && inScope(t.type)) {
+        t.skip = false; t.phaseDrop = false;
+        S.notes.phaseDropped = (S.notes.phaseDropped || []).filter(x => x !== w);
+        S.notes.phaseDroppedNew = (S.notes.phaseDroppedNew || []).filter(x => x !== w);
+        S.notes.phaseRestoredNew = S.notes.phaseRestoredNew || [];
+        if (!S.notes.phaseRestoredNew.includes(w)) S.notes.phaseRestoredNew.push(w);
+        return;
+      }
+      if (t.skip || !t.type || inScope(t.type)) return;
+      t.skip = true; t.phaseDrop = true;
+      S.notes.phaseDropped = S.notes.phaseDropped || []; S.notes.phaseDroppedNew = S.notes.phaseDroppedNew || [];
+      S.notes.phaseRestoredNew = (S.notes.phaseRestoredNew || []).filter(x => x !== w);
+      if (!S.notes.phaseDropped.includes(w)) { S.notes.phaseDropped.push(w); S.notes.phaseDroppedNew.push(w); }
+    });
+  }
+
   /* Pick a label that (a) is legal and (b) propagates failure from child up to parent.
      Only IMPACT_REVERSE_LABELS do that — `Contains` would silently break the cascade. */
   function pickLabel(parentType, childType) {
@@ -122,6 +169,7 @@
        each call site so no future parse path can skip it — a service that depends on itself is
        a silently wrong cascade. dropSelfTerms is idempotent. */
     dropSelfTerms();
+    dropOutOfPhaseTerms();
   }
   function pendingInfra() { return (S.answers.infra || []).filter(t => !t.type && !t.skip); }
   /* "two VMs" pre-selects `Redundant pair` — quantity belongs in the redundancy field. */
@@ -301,6 +349,8 @@
   const STAGE_DEFS = [
     {
       id: 'anchor', title: `What breaks?`, skippable: true,
+      /* No Application Service class in scope means nothing to name here. */
+      hidden: () => !inScope('Application Service'),
       lead: () => { const n = (S.answers.infra || []).filter(t => t.type && !t.skip).length;
         return n ? `You have given me ${n} thing${n === 1 ? '' : 's'}. Not one of them is what somebody rings you about — so name that now.` : `Outages start here, not at the top of a diagram. One question:`; },
       ask: `What is the one thing that, if it broke right now, someone would call you about?`,
@@ -315,7 +365,7 @@
     {
       id: 'environments', title: `How many copies of it are running?`, skippable: true,
       /* Nothing to copy if there is no service — the question would be meaningless. */
-      hidden: () => !!S.skipped.anchor,
+      hidden: () => !!S.skipped.anchor || !inScope('Application Service'),
       lead: () => `You said <strong>${esc(S.answers.anchor)}</strong>.`,
       ask: `Does it run in more than one place?`,
       hint: `Tick every environment that exists today. Production is assumed.`,
@@ -327,6 +377,7 @@
     },
     {
       id: 'ownership', title: `Who owns and funds it?`, skippable: true,
+      hidden: () => !inScope('Business Application'),
       lead: () => { const n = (S.answers.environments || ['Production']).length;
         return S.answers.anchor ? `${esc(S.answers.anchor)} is running in ${n} place${n > 1 ? 's' : ''}. Now the part people get wrong most often.` : `Now the part people get wrong most often.`; },
       ask: `What is this called on a budget line or a roadmap? Who supports it?`,
@@ -341,6 +392,8 @@
     },
     {
       id: 'capability', title: `What would the business be unable to do?`, skippable: true,
+      /* Business Capability is a Walk class. At Crawl scope there is nowhere to put the answer. */
+      hidden: () => !inScope('Business Capability'),
       lead: () => `The question that makes the money work.`,
       ask: `If ${'${app}'} were down all day, what could the business no longer do?`,
       hint: `Name activities, not systems. Add a row for everything that would stop.`,
@@ -375,6 +428,8 @@
     },
     {
       id: 'consumers', title: `Who consumes it, and what did you promise?`, skippable: true,
+      /* The whole Sell/Consume layer is Run. Nothing here can be built below that. */
+      hidden: () => !inScope('Business Service'),
       lead: () => `The commercial layer. Skip it if nobody outside your team consumes this.`,
       ask: `Who consumes ${'${app}'} — and what was promised?`,
       hint: `All optional. Leave the consumer blank to skip this whole layer.`,
@@ -411,6 +466,7 @@
     },
     {
       id: 'infrastructure', title: `What is it running on?`, skippable: true,
+      hidden: () => !scopedInfraTypes().length,
       lead: () => S.answers.anchor
         ? `Back down the stack. <strong>${esc(S.answers.anchor)}</strong> has to run on something.`
         : `You skipped naming the service, so this is the part you can actually point at. It will land on the canvas — just with nothing above it to carry a failure upward.`,
@@ -421,27 +477,36 @@
       body: () => {
         if (S.parsing) return `<div class="explain-box"><strong>Reading what you wrote…</strong> I am pulling out each thing you named and working out which CSDM class it is. Anything genuinely ambiguous I will hand back to you rather than guess.</div>
           ${llmConfig.llmAvailable ? `<div class="iv-source iv-source-llm"><span class="iv-led"></span>Asking <strong>${esc(llmConfig.model || 'the model')}</strong>… if it fails I fall back to the built-in vocabulary.</div>` : `<div class="iv-source iv-source-lex"><span class="iv-led"></span>Using the <strong>built-in vocabulary</strong>.</div>`}`;
-        const pend = pendingInfra(), resolved = (S.answers.infra || []).filter(t => t.type);
+        /* `!t.skip` matters: a term dropped for being out of phase scope (or for naming the
+           service itself) must not still be listed as something I recognised and kept. */
+        const pend = pendingInfra(), resolved = (S.answers.infra || []).filter(t => t.type && !t.skip);
         if (pend.length) {
           return `<div class="explain-box"><strong>${pend.length} term${pend.length > 1 ? 's need' : ' needs'} a decision from you.</strong> I will not guess these — guessing would teach you something false.</div>
             ${pend.map((t, i) => {
               const idx = S.answers.infra.indexOf(t);
-              const opts = t.options ? t.options : null;
+              /* An answer outside the phase scope is not offered — the same rule the Guided Path
+                 and Topology builders follow. The dropped options are named underneath so the
+                 boundary is visible rather than looking like a gap in the vocabulary. */
+              const allOpts = t.options ? t.options : null;
+              const opts = allOpts ? allOpts.filter(o => !o.type || inScope(o.type)) : null;
+              const pickable = Object.keys(schema().nodeTypes).filter(t2 => typeof isPickableClass !== 'function' || isPickableClass(t2));
+              const dropped = allOpts ? allOpts.filter(o => o.type && !inScope(o.type)).map(o => o.type) : pickable;
               return `<div class="path-step"><span class="path-step-title">&ldquo;${esc(t.term)}&rdquo;</span>
                 <div class="path-step-help">${esc(t.ask || `I do not have this word in my vocabulary.`)}<br><em>${esc(t.why)}</em></div>
                 <select class="iv-resolve" data-idx="${idx}">
                   <option value="">— choose —</option>
                   ${opts ? opts.map(o => `<option value="${esc(o.type || 'SKIP')}">${esc(o.label)}</option>`).join('')
-                    : Object.keys(schema().nodeTypes).filter(t2 => typeof isPickableClass !== 'function' || isPickableClass(t2)).sort().map(t2 => `<option value="${esc(t2)}">${esc(t2)}</option>`).join('')}
+                    : pickable.filter(inScope).sort().map(t2 => `<option value="${esc(t2)}">${esc(t2)}</option>`).join('')}
                   <option value="SKIP">Leave this out of the model</option>
-                </select></div>`;
+                </select>
+                ${phaseNote(dropped, opts && !opts.length ? `Every answer to this question is outside your phase scope (${scopeLabel()}), so the only option left is to leave it out:` : `Not offered as an answer at your phase scope (${scopeLabel()}):`)}</div>`;
             }).join('')}
             ${resolved.length ? `<div class="path-step-help">Already resolved: ${resolved.map(t => `<strong>${esc(t.label)}</strong> [${esc(t.type)}]`).join(', ')}.</div>` : ''}
             ${parserBadge()}`;
         }
         return `<div class="field full"><label>Everything it runs on or needs</label>
             <textarea id="iv-infra" placeholder="e.g. two app servers that connect to a postgres database hosted on a VM in us-east-1">${esc(S.answers.infraText || '')}</textarea></div>
-          <div class="path-step-help">I will nest these by depth using each class level in the schema, and connect them with <em>Depends on</em> / <em>Runs on</em> rather than <em>Contains</em> — deliberately. Only those labels carry a failure <em>upward</em> to your service; a chain built from <em>Contains</em> looks right on the canvas and produces no cascade at all.</div>
+          <div class="path-step-help">I will nest these by depth using each class level in the schema, and connect them with <em>Depends on</em> / <em>Runs on</em> rather than <em>Contains</em> — deliberately. Only those labels carry a failure <em>upward</em> to your service; a chain built from <em>Contains</em> looks right on the canvas and produces no cascade at all.${scopeIsAll() ? '' : ` <strong>Your phase scope is ${esc(scopeLabel())}</strong>, so I can only place ${scopedInfraTypes().length} of the ${schema().infrastructureTypes().length} infrastructure classes. Name something outside it and I will tell you what it was and which phase would let it in, rather than quietly swapping it for a class you did not say.`}</div>
           ${parserBadge()}
           ${resolved.length ? `<div class="explain-box">Recognised so far: ${resolved.map(t => `<strong>${esc(t.label)}</strong> <span class="muted">[${esc(t.type)}]</span>`).join(', ')}. Edit the box above to change them.</div>` : ''}`;
       },
@@ -527,8 +592,13 @@
         const d = buildDraft(), costRows = d.nodes.concat(d.reusedNodes).filter(n => hasField(n.type, 'monthlyCost'));
         /* No capability means no revenue field exists anywhere in the schema to write to —
            so say that, rather than render an empty table that looks like a bug. */
+        /* No capability means no revenue field exists anywhere to write to — but WHY there is
+           none changes the advice. "Go Back to the business-activity question" is wrong when the
+           phase scope is the reason that question was never asked. */
         const revTable = !caps.length
-          ? `<div class="explain-box explain-bad"><strong>There is nothing here that can hold a revenue figure.</strong> <code>revenueAmount</code> exists on exactly one class — <strong>Business Capability</strong> — and you have not named one, so revenue-at-risk can only ever read ${esc(money(0))}/hour. Go Back to the business-activity question if you want that number to work.</div>`
+          ? (!inScope('Business Capability')
+            ? `<div class="explain-box explain-bad"><strong>There is nothing here that can hold a revenue figure.</strong> <code>revenueAmount</code> exists on exactly one class — <strong>Business Capability</strong> — and that is a <strong>${esc(phaseOf('Business Capability'))}</strong>-phase class, outside your scope of ${esc(scopeLabel())}. So revenue-at-risk will read ${esc(money(0))}/hour, and it cannot be otherwise at this phase. That is the honest answer: money is a ${esc(phaseOf('Business Capability'))} capability of the model, not a Crawl one. Monthly cost below still works.</div>`
+            : `<div class="explain-box explain-bad"><strong>There is nothing here that can hold a revenue figure.</strong> <code>revenueAmount</code> exists on exactly one class — <strong>Business Capability</strong> — and you have not named one, so revenue-at-risk can only ever read ${esc(money(0))}/hour. Go Back to the business-activity question if you want that number to work.</div>`)
           : `<table class="iv-grid"><thead><tr><th>Business activity</th><th>Revenue</th><th>Period</th></tr></thead><tbody>
             ${caps.map(c => { const k = mkey('Business Capability', c), v = rev[k] || {}, ex = findExisting('Business Capability', c);
               const already = ex && ex.metadata && ex.metadata.revenueAmount;
@@ -644,15 +714,18 @@
     }
 
     /* Every layer below is optional now — a skipped stage simply contributes nothing, and
-       the edges that would have crossed it are guarded rather than emitted against null. */
-    const appId = a.ownership ? resolve('Business Application', a.ownership, { description: a.ownership, owner: a.owner || '' },
+       the edges that would have crossed it are guarded rather than emitted against null.
+       The `inScope` guards are deliberately redundant with the stage `hidden` flags: the scope
+       can be changed from the Learn menu mid-interview, and stale answers must not become nodes
+       of a class the builders had already stopped offering. */
+    const appId = a.ownership && inScope('Business Application') ? resolve('Business Application', a.ownership, { description: a.ownership, owner: a.owner || '' },
       { asked: `what this is called on a budget line`, why: `The product you fund and own. Exactly one of these, however many copies are running.` },
       { why: `Already in your model, so I am reusing it rather than minting a second one with the same name.` }) : null;
 
     /* Optional capability parent, created before the children so Contains reads downward. */
     let parentId = null;
     const cp = a.capParent;
-    if (cp && cp.name && (cp.children || []).length > 1) {
+    if (cp && cp.name && (cp.children || []).length > 1 && inScope('Business Capability')) {
       parentId = resolve('Business Capability', cp.name, { description: cp.name },
         { why: `You said these roll up into one bigger activity, so this is the parent Business Capability.` },
         { why: `Already in your model — reusing it as the parent.` });
@@ -660,7 +733,7 @@
         `The application provides the parent activity too.`);
     }
 
-    const capIds = (a.capabilities || []).filter(c => String(c).trim()).map(label => {
+    const capIds = (inScope('Business Capability') ? (a.capabilities || []) : []).filter(c => String(c).trim()).map(label => {
       const id = resolve('Business Capability', label, { description: label },
         { asked: `what the business could no longer do`, why: `What the business does, independent of the software doing it. The only class that can carry a revenue figure.` },
         { why: `Already in your model, so I am reusing it. Two applications providing the same capability is exactly how a shared business consequence gets modelled.` });
@@ -675,7 +748,7 @@
     /* Application Services, one per environment. */
     const n = (a.environments || ['Production']).length;
     let prodId = null, prodLabel = '';
-    if (a.anchor) (a.environments || ['Production']).forEach(env => {
+    if (a.anchor && inScope('Application Service')) (a.environments || ['Production']).forEach(env => {
       const isProd = env === 'Production', label = isProd ? a.anchor : `${a.anchor} (${env})`;
       const id = resolve('Application Service', label, { description: label, owner: a.owner || '', environment: env, operationalStatus: 'Operational' },
         { phrase: a.anchor, asked: isProd ? `what someone would call you about` : '', why: isProd ? `The running instance — the layer that can actually fail, and where simulation starts.` : `A separate service, so an outage here cannot make Production look degraded.` },
@@ -687,21 +760,21 @@
 
     /* Sell/Consume layer: Business Service -> Service Offering -> the running service. */
     const cs = a.consumers;
-    if (cs && cs.consumerType) {
+    if (cs && cs.consumerType && inScope('Business Service')) {
       const bsId = resolve('Business Service', cs.serviceName, { description: cs.serviceName, owner: a.owner || '', consumerType: cs.consumerType },
         { why: `The consumable face of the capability — what a ${cs.consumerType.toLowerCase()} consumer thinks they are buying. It cannot be failure-simulated directly; it goes red only because something under it did.` },
         { why: `Already in your model, so I am reusing it as the consumable face.` });
       capIds.forEach((capId, i) => link(bsId, capId, 'Business Service', 'Business Capability', 'Provides', cs.serviceName, a.capabilities[i],
         `The service is how this capability is actually consumed.`));
       const tiers = (cs.tiers || []).filter(Boolean);
-      (tiers.length ? tiers : [`${cs.serviceName} Offering`]).forEach(tier => {
+      if (inScope('Service Offering')) (tiers.length ? tiers : [`${cs.serviceName} Offering`]).forEach(tier => {
         const offId = resolve('Service Offering', tier, { description: tier, owner: a.owner || '', availabilityTarget: cs.availability || '', supportHours: cs.supportHours || '' },
           { why: `Where the commitment and the price live. The same Business Service can be offered several ways.` },
           { why: `Already in your model, so I am reusing this offering.` });
         link(bsId, offId, 'Business Service', 'Service Offering', 'Offers', cs.serviceName, tier, `One service, ${tiers.length || 1} way${(tiers.length || 1) > 1 ? 's' : ''} of buying it.`);
         if (prodId) link(offId, prodId, 'Service Offering', 'Application Service', 'Depends on', tier, prodLabel,
           `This is the second path by which a failure becomes a business consequence — the offering depends on the thing that actually runs.`);
-        if (cs.availability) {
+        if (cs.availability && inScope('Service Commitment')) {
           const cmLabel = `${tier}: ${cs.availability}`;
           const cmId = resolve('Service Commitment', cmLabel, { description: `${cs.availability} availability, ${cs.supportHours}` },
             { why: `A promise you can name. Modelling it means an outage can be reported as a broken commitment, not just a red icon.` },
@@ -730,7 +803,7 @@
 
     /* Pass 1 — every node first, so a pairing can name something declared later in the
        sentence ("a database instance that runs on a VM" names the VM second). */
-    (a.infra || []).filter(t => t.type && !t.skip).slice()
+    (a.infra || []).filter(t => t.type && !t.skip && inScope(t.type)).slice()
       .sort((x, y) => levelOf(x.type) - levelOf(y.type))
       .forEach(t => {
         const generic = norm(t.label) === norm(t.type);
@@ -873,6 +946,8 @@
     setTitle(`Review the proposal`);
     body(`<p class="muted">Nothing has touched the canvas yet. Every claim below is mine to justify and yours to reject.</p>
       ${skipSummary(`You left ${gaps().length} question${gaps().length > 1 ? 's' : ''} unanswered. That is allowed — this is what it costs you.`)}
+      ${scopeIsAll() ? '' : `<div class="explain-box"><strong>Built at ${esc(scopeLabel())} scope.</strong> Everything below is a class that phase actually uses. Whole layers of CSDM are missing from this proposal on purpose, and that is what a model at this phase looks like — widen the scope under <strong>CSDM Phase</strong> in the Learn menu and run this again to see what the next phase adds.</div>`}
+      ${(S.notes.phaseDropped || []).length ? `<div class="explain-box">I left ${S.notes.phaseDropped.map(w => esc(w)).join(', ')} out — recognised correctly, but outside your ${esc(scopeLabel())} phase scope.</div>` : ''}
       ${(S.notes.selfDropped || []).length ? `<div class="explain-box">I left ${S.notes.selfDropped.map(w => `&ldquo;${esc(w)}&rdquo;`).join(', ')} out of the infrastructure below — you named ${(S.notes.selfDropped || []).length > 1 ? 'those' : 'that'} as the service or the application itself, and neither can depend on itself.</div>` : ''}
       ${reN ? `<div class="explain-box"><strong>${reN} of these already exist</strong> in your model, so I am pointing at them instead of creating duplicates.</div>` : ''}
       ${d.metaUpdates.length ? `<div class="explain-box explain-bad"><strong>${d.metaUpdates.length} change${d.metaUpdates.length > 1 ? 's' : ''} to nodes you already have.</strong> ${d.metaUpdates.map(u => `${esc(u.label)}: ${esc(u.key)} ${u.old ? `${esc(u.old)} &rarr; ` : `&rarr; `}${esc(u.value)}`).join('; ')}. Untick that node to leave it alone.</div>` : ''}
@@ -1007,6 +1082,9 @@
 
   function renderStage() {
     if (S.i >= STAGES.length) return renderReview();
+    /* The phase scope can hide the stage we are sitting on — at start, or because it was
+       changed from the Learn menu mid-interview. Step over it rather than rendering it. */
+    if (hiddenStage(STAGES[S.i])) { const j = nextIndex(S.i); if (j !== S.i) { S.i = j; return renderStage(); } }
     const st = STAGES[S.i], lead = typeof st.lead === 'function' ? st.lead() : st.lead;
     const askText = String(typeof st.ask === 'function' ? st.ask() : st.ask)
       .replace('${app}', `<strong>${esc(S.answers.ownership || S.answers.anchor || 'it')}</strong>`)
@@ -1014,8 +1092,19 @@
     /* Shown once, on the stage right after the drop happened. */
     const dropped = (S.notes.selfDroppedNew || []).slice();
     S.notes.selfDroppedNew = [];
+    const phaseDropped = (S.notes.phaseDroppedNew || []).slice();
+    S.notes.phaseDroppedNew = [];
+    const phaseRestored = (S.notes.phaseRestoredNew || []).slice();
+    S.notes.phaseRestoredNew = [];
+    /* Which questions the scope removed, and what each one would have been for. Rendered from
+       the stage's own `cost()` so a phase-hidden question reads exactly like a skipped one —
+       the hole in the model is the same hole either way. */
+    const hiddenByPhase = STAGES.filter(s => hiddenStage(s) && s.id !== 'environments');
     setTitle(st.title);
     body(`<div class="iv-progress">${STAGES.map((s, i) => hiddenStage(s) ? '' : `<span class="iv-dot ${i === S.i ? 'on' : S.skipped[s.id] ? 'skipped' : i < S.i ? 'done' : ''}">${esc(s.id)}</span>`).join('')}<span class="iv-dot">review</span></div>
+      ${scopeIsAll() ? '' : `<div class="explain-box"><strong>Phase scope: ${esc(scopeLabel())}.</strong> ${hiddenByPhase.length ? `${hiddenByPhase.length} question${hiddenByPhase.length > 1 ? 's are' : ' is'} not being asked, because the class${hiddenByPhase.length > 1 ? 'es' : ''} the answer would go into ${hiddenByPhase.length > 1 ? 'are' : 'is'} outside it:<ul class="iv-gaps">${hiddenByPhase.map(s => `<li><strong>${esc(s.title)}</strong> &mdash; ${typeof s.cost === 'function' ? s.cost() : s.cost}</li>`).join('')}</ul>` : `Every question still applies at this scope.`}Change it under <strong>CSDM Phase</strong> in the Learn menu.</div>`}
+      ${phaseDropped.length ? `<div class="explain-box"><strong>Held back as outside your phase scope: ${phaseDropped.map(w => esc(w)).join(', ')}.</strong> I recognised ${phaseDropped.length > 1 ? 'those' : 'that'} correctly — the class just is not in play at ${esc(scopeLabel())}. I will not substitute a class you did not say. Tick the phase it belongs to under <strong>CSDM Phase</strong> in the Learn menu and ${phaseDropped.length > 1 ? 'they come' : 'it comes'} straight back; you do not have to type it again.</div>` : ''}
+      ${phaseRestored.length ? `<div class="explain-box"><strong>Back in: ${phaseRestored.map(w => esc(w)).join(', ')}.</strong> You widened the phase scope, so ${phaseRestored.length > 1 ? 'these are' : 'this is'} in play again from what you already told me.</div>` : ''}
       <p class="muted">${lead}</p>
       <p class="iv-ask">${askText}</p>
       <p class="muted iv-hint">${st.hint}</p>
@@ -1218,8 +1307,8 @@
     delCap: i => { readCapsLoose(); S.answers.capabilities.splice(i, 1); if (!S.answers.capabilities.length) S.answers.capabilities = ['']; renderStage(); },
     addTier: () => { readTiersLoose(); S.answers.consumers.tiers.push(''); renderStage(); setTimeout(() => { const r = document.querySelectorAll('.iv-tier'); if (r.length) r[r.length - 1].focus(); }, 60); },
     delTier: i => { readTiersLoose(); S.answers.consumers.tiers.splice(i, 1); if (!S.answers.consumers.tiers.length) S.answers.consumers.tiers = ['']; renderStage(); },
-    saveKey, clearKey, toggleParser, reloadConfig: loadLLMConfig,
-    _state: () => S, _draft: () => buildDraft(), _config: () => llmConfig
+    saveKey, clearKey, toggleParser, reloadConfig: loadLLMConfig, onPhaseScopeChange,
+    _state: () => S, _draft: () => buildDraft(), _config: () => llmConfig, _inScope: inScope
   };
   window.CSDM_START_INTERVIEW = start;
 

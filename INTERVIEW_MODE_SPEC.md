@@ -209,6 +209,37 @@ stage's `hidden()` predicate — there is nothing to have copies of.
 and auto-nests (see that stage for why it is not iterative). `Review` has three parts: review the
 proposal, fire the payoff, the closing question.
 
+**Phase scope gates whole stages.** Every class carries a `phase` (Crawl / Walk / Run / Fly); the
+active scope is a multi-select in the status bar under **Learn ▾ ▸ CSDM Phase**, owned by `app.js`
+(`activePhases`, `inPhaseScope`, `outOfPhaseNote`) and only *read* here via `inScope()`. A stage
+whose output class is outside the scope is hidden through the same `hidden()` predicate that hides
+Environments:
+
+| stage | needs | phase |
+| --- | --- | --- |
+| anchor, environments | Application Service | Crawl |
+| ownership | Business Application | Crawl |
+| capability | Business Capability | Walk |
+| consumers | Business Service | Run |
+| infrastructure | any infra class | Crawl (mostly) |
+
+`money` is **not** gated — `monthlyCost` still applies — but its revenue table swaps in a message
+naming the phase when Business Capability is out of scope, because "Go Back to the business-activity
+question" is wrong advice when that question was never asked.
+
+Three rules this must keep:
+
+- A hidden stage is reported with its own `cost()`, in a banner on every screen. Design rule 1
+  applies to the phase boundary as much as to a skip: a question that silently disappears teaches
+  nothing. `gaps()` excludes hidden stages, so a phase-gated question never reads as "unanswered".
+- A term the parser resolved to an out-of-scope class is **dropped, never re-pointed** at a class
+  the user did not say (`dropOutOfPhaseTerms`), and the drop is announced. It is *reversible* —
+  widening the scope restores the term from `phaseDrop`, so following the advice in the banner does
+  not cost the user a retype. `selfDrop` and a user-chosen `SKIP` are never restored.
+- `buildDraft()` re-checks `inScope()` on every fixed class even though the stages are hidden. The
+  scope can be changed from the Learn menu mid-interview (`onPhaseScopeChange`), and a stale answer
+  must not become a node of a class the builders had already stopped offering.
+
 Notation per question:
 
 - **id** — stable key for the answer store. Convention: a single-question stage uses the bare
