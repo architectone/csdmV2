@@ -496,7 +496,7 @@
                 <select class="iv-resolve" data-idx="${idx}">
                   <option value="">— choose —</option>
                   ${opts ? opts.map(o => `<option value="${esc(o.type || 'SKIP')}">${esc(o.label)}</option>`).join('')
-                    : pickable.filter(inScope).sort().map(t2 => `<option value="${esc(t2)}">${esc(t2)}</option>`).join('')}
+                    : pickable.filter(inScope).sort().map(t2 => `<option value="${esc(t2)}">${esc(`${t2} · ${phaseOf(t2)}`)}</option>`).join('')}
                   <option value="SKIP">Leave this out of the model</option>
                 </select>
                 ${phaseNote(dropped, opts && !opts.length ? `Every answer to this question is outside your phase scope (${scopeLabel()}), so the only option left is to leave it out:` : `Not offered as an answer at your phase scope (${scopeLabel()}):`)}</div>`;
