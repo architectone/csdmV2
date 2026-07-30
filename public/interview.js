@@ -1229,8 +1229,7 @@
   }
 
   function buildParserMenu() {
-    const learnBtn = document.getElementById('learn-menu-btn');
-    if (!learnBtn || document.getElementById('iv-parser-btn')) return;
+    if (document.getElementById('iv-parser-btn')) return;
     const wrap = document.createElement('div');
     wrap.className = 'menu-wrap';
     wrap.innerHTML = `<button id="iv-parser-btn" class="iv-parser-off" onclick="CSDM_IV.toggleParser()"><span class="iv-led"></span>Parser &#9662;</button>
@@ -1245,7 +1244,14 @@
           <button onclick="CSDM_IV.clearKey()">Clear key</button>
         </div>
       </div>`;
-    learnBtn.parentElement.insertAdjacentElement('afterend', wrap);
+    /* Status-bar order (File, Parser, Phase, Learn, ...) is fixed by an empty placeholder in
+       index.html rather than by anchoring off the Learn button — this used to insert itself
+       right after Learn, which put Parser in the wrong slot once Learn moved. Falls back to the
+       old anchor if the placeholder is ever missing, so this keeps degrading gracefully rather
+       than silently doing nothing. */
+    const slot = document.getElementById('parser-menu-slot');
+    if (slot) slot.replaceWith(wrap);
+    else { const learnBtn = document.getElementById('learn-menu-btn'); if (!learnBtn) return; learnBtn.parentElement.insertAdjacentElement('afterend', wrap); }
     paintParserButton();
   }
 
