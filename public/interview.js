@@ -1323,7 +1323,10 @@
     if (learn && !document.getElementById('iv-launch')) {
       const b = document.createElement('button');
       b.id = 'iv-launch'; b.textContent = 'Interview: describe your environment'; b.onclick = start;
-      learn.insertBefore(b, learn.firstChild);
+      // Sit under Start Here when it exists, so the menu's order is set by index.html rather than
+      // by whichever script ran last. Falls back to the old top slot if that button is missing.
+      const startHere = document.getElementById('start-here-launch');
+      learn.insertBefore(b, startHere ? startHere.nextSibling : learn.firstChild);
     }
     const canvas = document.getElementById('canvas-menu');
     if (canvas && !document.getElementById('iv-launch-canvas')) {
