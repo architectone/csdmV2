@@ -1325,13 +1325,15 @@
 
   function addLaunchers() {
     // Interview is a builder, so it launches from Build ▾ — it used to sit in Learn ▾ while its
-    // three sibling builders were right-click-only, which is exactly backwards. First in the
-    // menu on purpose: it is the one that needs no CSDM vocabulary to start.
+    // three sibling builders were right-click-only, which is exactly backwards. It goes directly
+    // under Start Here (the panel that offers Interview as its own first card), so the order is
+    // set by index.html rather than by whichever script ran last. Falls back to the top slot.
     const build = document.querySelector('#build-menu-panel .bar-menu-actions');
     if (build && !document.getElementById('iv-launch')) {
       const b = document.createElement('button');
       b.id = 'iv-launch'; b.textContent = 'Interview: describe your environment'; b.onclick = start;
-      build.insertBefore(b, build.firstChild);
+      const startHere = document.getElementById('start-here-launch');
+      build.insertBefore(b, startHere ? startHere.nextSibling : build.firstChild);
     }
     const canvas = document.getElementById('canvas-menu');
     if (canvas && !document.getElementById('iv-launch-canvas')) {
