@@ -92,16 +92,29 @@ body{font-family:Segoe UI,Tahoma,sans-serif;margin:0;height:100vh;display:flex;f
 .iv-grid select,.iv-grid input{width:100%}
 #modal-body textarea{min-height:80px;font-family:inherit}
 .iv-parentrow td{background:#eff6ff}
-/* Parser status: the status-bar button is itself the indicator. */
+/* Config panel: two collapsed rows that each state their own value. Identical shape until one
+   is expanded, which is what makes them read as a pair rather than as one setting plus a form. */
+.cfg-row{border-top:1px solid #e2e8f0}
+.cfg-row:first-child{border-top:0}
+.cfg-head{display:flex;align-items:center;gap:8px;width:100%;padding:8px 4px!important;background:transparent!important;color:#0f172a!important;font-size:12px;font-weight:700;text-align:left;border-radius:7px}
+.cfg-head:hover{background:#f1f5f9!important}
+.cfg-name{flex:1}
+.cfg-val{font-weight:400;font-size:11px;color:#64748b}
+.cfg-val-on{color:#0f766e;font-weight:700}
+.cfg-chev{font-size:9px;color:#94a3b8}
+.cfg-body{display:flex;flex-direction:column;gap:8px;padding:2px 4px 10px}
+.cfg-help{font-size:11px;color:#64748b;line-height:1.5}
+.cfg-seg{display:inline-flex;align-self:flex-start;border:1px solid #cbd5e1;border-radius:8px;overflow:hidden}
+.cfg-seg button{padding:5px 16px!important;border-radius:0!important;background:#fff!important;color:#334155!important;font-weight:600;font-size:11px}
+.cfg-seg button.on{background:#0f766e!important;color:#fff!important}
+/* Parser status: the Config button badges a live key; these style the section inside it. */
 .iv-led{width:8px;height:8px;border-radius:999px;background:currentColor;display:inline-block;margin-right:7px;flex:none}
-#iv-parser-btn{display:inline-flex;align-items:center;white-space:nowrap}
-#iv-parser-btn.iv-parser-on{background:#0f766e}
-#iv-parser-btn.iv-parser-off{background:#64748b}
-#iv-parser-panel{width:340px}
-#iv-parser-panel .explain-box{font-size:11px;line-height:1.5}
-#iv-parser-panel input{width:100%;font-family:ui-monospace,Consolas,monospace}
-#iv-parser-panel .bar-menu-actions button{flex:1;background:#2563eb!important}
-#iv-parser-panel .bar-menu-actions button:last-child{background:#64748b!important}
+#config-menu-panel{width:340px}
+#iv-parser-section{display:flex;flex-direction:column;gap:8px}
+#iv-parser-section .explain-box{font-size:11px;line-height:1.5}
+#iv-parser-section input{width:100%;font-family:ui-monospace,Consolas,monospace}
+#iv-parser-section .bar-menu-actions button{flex:1;background:#2563eb!important}
+#iv-parser-section .bar-menu-actions button:last-child{background:#64748b!important}
 .iv-parser-msg{font-size:11px;line-height:1.5;border-radius:8px;padding:8px 10px;border:1px solid}
 .iv-msg-good{background:#f0fdf4;border-color:#bbf7d0;color:#166534}
 .iv-msg-bad{background:#fef2f2;border-color:#fecaca;color:#991b1b}

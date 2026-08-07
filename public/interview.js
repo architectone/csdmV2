@@ -303,8 +303,8 @@
         : `<div class="iv-source iv-source-lex"><span class="iv-led"></span>Read with the <strong>built-in vocabulary</strong> — ${esc(S.parseSource.note)}</div>`;
     }
     return llmConfig.llmAvailable
-      ? `<div class="iv-source iv-source-llm"><span class="iv-led"></span>Your answer will be read by <strong>${esc(llmConfig.model || 'the model')}</strong>. Change this under <strong>Parser</strong> in the status bar.</div>`
-      : `<div class="iv-source iv-source-lex"><span class="iv-led"></span>Your answer will be read with the <strong>built-in vocabulary</strong>. Add an API key under <strong>Parser</strong> in the status bar to use the model instead.</div>`;
+      ? `<div class="iv-source iv-source-llm"><span class="iv-led"></span>Your answer will be read by <strong>${esc(llmConfig.model || 'the model')}</strong>. Change this under <strong>Config</strong> in the status bar.</div>`
+      : `<div class="iv-source iv-source-lex"><span class="iv-led"></span>Your answer will be read with the <strong>built-in vocabulary</strong>. Add an API key under <strong>Config</strong> in the status bar to use the model instead.</div>`;
   }
 
   function runParse(text) {
@@ -1195,19 +1195,20 @@
       .catch(err => ({ success: false, error: err.message }));
   }
 
-  /* The button itself is the indicator — you can see whether a key is loaded without
-     opening anything, because that is the thing you forget. */
-  function paintParserButton() {
-    const btn = document.getElementById('iv-parser-btn');
-    if (!btn) return;
-    const on = !!llmConfig.llmAvailable;
-    btn.classList.toggle('iv-parser-on', on);
-    btn.classList.toggle('iv-parser-off', !on);
-    btn.innerHTML = `<span class="iv-led"></span>Parser: ${on ? 'LLM' : 'Built-in'} &#9662;`;
-    btn.title = on
+  /* A live key still shows without opening anything, because that is the thing you forget —
+     it is just the Config ▾ badge now rather than a button of our own. app.js owns that button
+     (Learning Mode shares it), so we hand it the words and let it compose. */
+  function parserSummary() { return llmConfig.llmAvailable ? 'LLM' : ''; }
+
+  function parserTitle() {
+    return llmConfig.llmAvailable
       ? `Interview Mode will send infrastructure answers to ${llmConfig.model || 'the model'}.`
-      : `Interview Mode will use the built-in lexicon. Click to add an API key.`;
-    const panel = document.getElementById('iv-parser-panel');
+      : `Interview Mode will use the built-in lexicon — open Config to add an API key.`;
+  }
+
+  function paintParserButton() {
+    if (typeof paintConfigButton === 'function') paintConfigButton();
+    const panel = document.getElementById('config-menu-panel');
     if (panel && !panel.classList.contains('hidden')) paintParserPanel();
   }
 
@@ -1228,44 +1229,48 @@
     el.innerHTML = `<strong>No key — the interview uses its built-in vocabulary.</strong> That is a supported way to run this: the lexicon knows the common words and asks you about the ambiguous ones. A key mainly buys you looser phrasing.`;
   }
 
+  /* The parser used to own a status-bar button of its own. It is now a section inside Config ▾
+     alongside Learning Mode — both are "how the builders behave", neither changes what they may
+     create, so neither earns its own slot on the bar. The state that button carried has not been
+     dropped: paintConfigButton() in app.js badges Config with `LLM` whenever a key is live, so a
+     key is still visible without opening anything. Phase stayed on the bar for the opposite
+     reason — see the phase-scope note in CLAUDE.md. */
   function buildParserMenu() {
-    if (document.getElementById('iv-parser-btn')) return;
+    if (document.getElementById('iv-parser-section')) return;
     const wrap = document.createElement('div');
-    wrap.className = 'menu-wrap';
-    wrap.innerHTML = `<button id="iv-parser-btn" class="iv-parser-off" onclick="CSDM_IV.toggleParser()"><span class="iv-led"></span>Parser &#9662;</button>
-      <div id="iv-parser-panel" class="bar-menu hidden">
-        <div id="iv-parser-state" class="explain-box"></div>
-        <div class="field full"><label>Anthropic API key</label>
-          <input id="iv-apikey" type="password" placeholder="sk-ant-..." autocomplete="off" spellcheck="false"></div>
-        <div class="path-step-help" style="margin-left:0">Create one at <strong>console.anthropic.com</strong> &rarr; API Keys. It is sent to this local server and kept in memory only — never written to disk, never returned to the browser.</div>
-        <div id="iv-parser-msg" class="muted"></div>
-        <div class="bar-menu-actions">
-          <button onclick="CSDM_IV.saveKey()">Save &amp; test</button>
-          <button onclick="CSDM_IV.clearKey()">Clear key</button>
-        </div>
+    wrap.id = 'iv-parser-section';
+    /* No heading of our own — the Config row this drops into is already titled "Interview parser",
+       and two titles is how the first version of this panel became unreadable. */
+    wrap.innerHTML = `<div id="iv-parser-state" class="explain-box"></div>
+      <div class="field full"><label>Anthropic API key</label>
+        <input id="iv-apikey" type="password" placeholder="sk-ant-..." autocomplete="off" spellcheck="false"></div>
+      <div class="path-step-help" style="margin-left:0">Create one at <strong>console.anthropic.com</strong> &rarr; API Keys. It is sent to this local server and kept in memory only — never written to disk, never returned to the browser.</div>
+      <div id="iv-parser-msg" class="muted"></div>
+      <div class="bar-menu-actions">
+        <button onclick="CSDM_IV.saveKey()">Save &amp; test</button>
+        <button onclick="CSDM_IV.clearKey()">Clear key</button>
       </div>`;
-    /* Status-bar order (File, Parser, Phase, Learn, ...) is fixed by an empty placeholder in
-       index.html rather than by anchoring off the Learn button — this used to insert itself
-       right after Learn, which put Parser in the wrong slot once Learn moved. Falls back to the
-       old anchor if the placeholder is ever missing, so this keeps degrading gracefully rather
-       than silently doing nothing. */
-    const slot = document.getElementById('parser-menu-slot');
+    /* Placement is a placeholder in index.html, never an offset from a sibling — anchoring off
+       whatever button happened to be next door is what put this in the wrong slot the last time
+       the bar was re-ordered. Appending to the panel is the fallback so a missing placeholder
+       degrades to "wrong position" rather than "no way to enter a key at all". */
+    const slot = document.getElementById('parser-config-slot');
     if (slot) slot.replaceWith(wrap);
-    else { const learnBtn = document.getElementById('learn-menu-btn'); if (!learnBtn) return; learnBtn.parentElement.insertAdjacentElement('afterend', wrap); }
+    else { const panel = document.getElementById('config-menu-panel'); if (!panel) return; panel.appendChild(wrap); }
+    /* Registered after the inline onclick, so the panel has already been toggled by the time
+       this runs and its class tells us whether we are opening or closing. */
+    const btn = document.getElementById('config-menu-btn');
+    if (btn) btn.addEventListener('click', onConfigMenuToggle);
     paintParserButton();
   }
 
   /* Re-reads the server on every open: another tab, or a restart, may have changed it. */
-  function toggleParser() {
-    const panel = document.getElementById('iv-parser-panel');
-    const opening = panel && panel.classList.contains('hidden');
-    if (typeof toggleBarMenu === 'function') toggleBarMenu('iv-parser-panel');
-    if (!opening) return;
+  function onConfigMenuToggle() {
+    const panel = document.getElementById('config-menu-panel');
+    if (!panel || panel.classList.contains('hidden')) return;
     msg('');
     paintParserPanel();
     loadLLMConfig().then(paintParserPanel);
-    const input = document.getElementById('iv-apikey');
-    if (input) setTimeout(() => input.focus(), 40);
   }
 
   /* Failures render as a block, not an inline span — the previous version put the
@@ -1313,7 +1318,7 @@
     delCap: i => { readCapsLoose(); S.answers.capabilities.splice(i, 1); if (!S.answers.capabilities.length) S.answers.capabilities = ['']; renderStage(); },
     addTier: () => { readTiersLoose(); S.answers.consumers.tiers.push(''); renderStage(); setTimeout(() => { const r = document.querySelectorAll('.iv-tier'); if (r.length) r[r.length - 1].focus(); }, 60); },
     delTier: i => { readTiersLoose(); S.answers.consumers.tiers.splice(i, 1); if (!S.answers.consumers.tiers.length) S.answers.consumers.tiers = ['']; renderStage(); },
-    saveKey, clearKey, toggleParser, reloadConfig: loadLLMConfig, onPhaseScopeChange,
+    saveKey, clearKey, onConfigMenuToggle, parserSummary, parserTitle, reloadConfig: loadLLMConfig, onPhaseScopeChange,
     _state: () => S, _draft: () => buildDraft(), _config: () => llmConfig, _inScope: inScope
   };
   window.CSDM_START_INTERVIEW = start;

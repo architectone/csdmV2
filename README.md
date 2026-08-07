@@ -22,7 +22,7 @@ Node 18+ is a safe floor: the server itself uses nothing newer than optional cha
 
 Interview Mode's infrastructure question can send your prose to Claude Haiku 4.5 to pull out the *things* you mentioned. It is strictly additive:
 
-- **With a key** — set `ANTHROPIC_API_KEY` before starting, or paste one at runtime under **Parser ▾** in the status bar. A pasted key is test-called before it is accepted, is held in memory only, and does not survive a restart — it is never written to `csdmData.json` or localStorage.
+- **With a key** — set `ANTHROPIC_API_KEY` before starting, or paste one at runtime under **Config ▾** in the status bar. A pasted key is test-called before it is accepted, is held in memory only, and does not survive a restart — it is never written to `csdmData.json` or localStorage.
 - **Without one** — the endpoint answers `501 { unavailable: true }` and the client falls back to the hand-written lexicon in `public/interviewLexicon.js`. Everything still works.
 
 The model never authors relationships; it returns things and which things go together, and the edges are built deterministically. Per-call token cost is logged, and `GET /api/interview/usage` reports the running session total. Set `INTERVIEW_CREDIT_USD=20` to have it also report credit remaining.
