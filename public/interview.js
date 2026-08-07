@@ -1324,14 +1324,14 @@
   window.CSDM_START_INTERVIEW = start;
 
   function addLaunchers() {
-    const learn = document.querySelector('#learn-menu-panel .bar-menu-actions');
-    if (learn && !document.getElementById('iv-launch')) {
+    // Interview is a builder, so it launches from Build ▾ — it used to sit in Learn ▾ while its
+    // three sibling builders were right-click-only, which is exactly backwards. First in the
+    // menu on purpose: it is the one that needs no CSDM vocabulary to start.
+    const build = document.querySelector('#build-menu-panel .bar-menu-actions');
+    if (build && !document.getElementById('iv-launch')) {
       const b = document.createElement('button');
       b.id = 'iv-launch'; b.textContent = 'Interview: describe your environment'; b.onclick = start;
-      // Sit under Start Here when it exists, so the menu's order is set by index.html rather than
-      // by whichever script ran last. Falls back to the old top slot if that button is missing.
-      const startHere = document.getElementById('start-here-launch');
-      learn.insertBefore(b, startHere ? startHere.nextSibling : learn.firstChild);
+      build.insertBefore(b, build.firstChild);
     }
     const canvas = document.getElementById('canvas-menu');
     if (canvas && !document.getElementById('iv-launch-canvas')) {
