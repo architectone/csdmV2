@@ -29,9 +29,9 @@ The model never authors relationships; it returns things and which things go tog
 
 ## Where to start
 
-On an empty canvas the **Start Here** panel offers three ways in, easiest first — describe your environment in your own words (Interview Mode), open a finished model and take it apart, or build it layer by layer with a definition at every step. There is also a short tour of the interface, which auto-runs on your first visit and is re-runnable from **Learn ▾ → Take the Tour**.
+The app opens on an empty canvas, and the **Start Here** panel offers three ways in, easiest first — describe your environment in your own words (Interview Mode), open a finished model and take it apart, or build it layer by layer with a definition at every step. There is also a short tour of the interface, offered on the Start Here panel and always available from **Learn ▾ → Take the Tour**. It does not open itself over an empty canvas, and it skips the steps that describe nodes until you have some.
 
-If you want the payoff in one minute: **File ▾ → Open → ★ Shared-Infrastructure Example**, then right-click the shared cluster → **Simulate Failure**, and watch it hit both trading services while a single database failure hits only one.
+If you want the payoff in one minute, take the second card — it opens the **Shared-Infrastructure Example**. Then right-click the shared cluster → **Simulate Failure**, and watch it hit both trading services while a single database failure hits only one.
 
 ## What's in it
 
@@ -46,7 +46,7 @@ If you want the payoff in one minute: **File ▾ → Open → ★ Shared-Infrast
 
 ## Data and storage
 
-- `csdmData.json` — the working model. Saving writes it and drops a timestamped copy in `backups/`.
+- `csdmData.json` — the working model. Ships **empty**, so a fresh clone opens on Start Here rather than inside a model you did not build. Saving writes it and drops a timestamped copy in `backups/`, so once you have saved something that is what you reopen.
 - `backups/` — saved models plus the shipped examples, all loadable from **File ▾ → Open**:
   - `csdmData.reference-example.json` — one service, end to end.
   - `csdmData.shared-infra-example.json` — two services sharing infrastructure (the impact-contrast demo).
