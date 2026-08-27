@@ -395,6 +395,11 @@
       "label": "Contains"
     },
     {
+      "from": "pod-order-router-1",
+      "to": "container-order-router",
+      "label": "Depends on"
+    },
+    {
       "from": "container-order-router",
       "to": "image-order-router",
       "label": "Uses"
