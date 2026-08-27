@@ -365,6 +365,11 @@
       "label": "Depends on"
     },
     {
+      "from": "svc-equity-trading",
+      "to": "workload-order-router",
+      "label": "Depends on"
+    },
+    {
       "from": "cluster-pgh-core",
       "to": "ns-trading-prod",
       "label": "Contains"
